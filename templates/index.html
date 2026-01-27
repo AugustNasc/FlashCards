@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FlashCards IA</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="bg-layer"></div>
+    <div class="topbar">
+      <div class="theme-switch">
+        <button class="ghost theme-btn" data-theme="light">Light</button>
+        <button class="ghost theme-btn" data-theme="dark">Dark</button>
+        <button class="ghost theme-btn" data-theme="sand">Sand</button>
+        <button class="ghost theme-btn" data-theme="mint">Mint</button>
+      </div>
+      <button class="ghost icon-btn" id="open-settings" aria-label="Configurações">⚙️</button>
+    </div>
+    <div id="settings" class="settings floating hidden">
+      <div class="settings-header">
+        <h3>Configurações</h3>
+        <button class="ghost icon-btn" id="close-settings" aria-label="Fechar">✕</button>
+      </div>
+      <div class="field">
+        <label for="api-key">API Key (OpenAI)</label>
+        <input id="api-key" type="password" placeholder="Cole sua chave aqui" />
+        <p class="muted">A chave fica salva no seu navegador.</p>
+      </div>
+      <div class="field">
+        <label for="playlist">Playlist (link de embed)</label>
+        <input id="playlist" type="text" placeholder="Cole o link de embed (Spotify, YouTube etc.)" />
+        <p class="muted">Use o link de incorporação para tocar dentro do app.</p>
+      </div>
+      <div class="field toggle-row">
+        <label for="playlist-enabled">Ativar playlist</label>
+        <input id="playlist-enabled" type="checkbox" />
+      </div>
+      <button id="save-settings">Salvar configurações</button>
+      <p id="settings-status" class="status"></p>
+    </div>
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Anki moderno + IA</p>
+        <h1>Flashcards rápidos, limpos e acessíveis no celular.</h1>
+        <p class="subhead">
+          Gere perguntas e respostas em segundos e estude quando quiser.
+        </p>
+      </div>
+      <div class="hero-card">
+        <div class="stat">
+          <span>Cards salvos</span>
+          <strong id="card-count">0</strong>
+        </div>
+        <div class="stat">
+          <span>Foco em estudo</span>
+          <strong>Sem distrações</strong>
+        </div>
+        <a class="cta-link" href="/study">Abrir modo estudo</a>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel panel-wide collections-panel">
+        <div class="panel-header">
+          <h2>Coleções</h2>
+        </div>
+        <div class="collections">
+          <div class="field">
+            <label for="collection-select">Selecionar coleção</label>
+            <select id="collection-select"></select>
+            <button class="ghost" id="delete-collection">Excluir coleção</button>
+          </div>
+          <div class="field">
+            <label for="collection-name">Nova coleção</label>
+            <div class="inline">
+              <input id="collection-name" type="text" placeholder="Ex.: Segurança" />
+              <button id="create-collection">Criar</button>
+            </div>
+            <p id="collection-status" class="status"></p>
+          </div>
+          <div class="field">
+            <label for="import-file">Importar cards</label>
+            <input id="import-file" type="file" accept=".csv,.json" />
+            <button class="ghost" id="import-cards">Importar</button>
+            <p id="import-status" class="status"></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel compact">
+        <h2>Gerar com IA</h2>
+        <p class="muted">Defina um tema e a quantidade de cards. A IA responde em JSON e os cards já ficam salvos.</p>
+        <div class="field">
+          <label for="topic">Tema</label>
+          <input id="topic" type="text" placeholder="Ex.: Anatomia, História do Brasil, JavaScript" />
+        </div>
+        <div class="field">
+          <label for="count">Quantidade</label>
+          <input id="count" type="number" min="1" max="60" value="5" />
+        </div>
+        <button id="generate">Gerar cards</button>
+        <div class="progress">
+          <div id="progress-bar" class="progress-bar"></div>
+        </div>
+        <p id="generate-status" class="status"></p>
+        <p id="usage-status" class="status"></p>
+      </section>
+
+      <section class="panel compact">
+        <h2>Criar manualmente</h2>
+        <p class="muted">Use quando quiser ajustar algo específico ou adicionar cards rápidos.</p>
+        <div class="field">
+          <label for="question">Pergunta</label>
+          <textarea id="question" rows="3" placeholder="Digite a pergunta..."></textarea>
+        </div>
+        <div class="field">
+          <label for="answer">Resposta</label>
+          <textarea id="answer" rows="3" placeholder="Digite a resposta..."></textarea>
+        </div>
+        <button id="save">Salvar card</button>
+        <p id="save-status" class="status"></p>
+      </section>
+
+      <section class="panel panel-wide">
+        <div class="panel-header">
+          <h2>Cards salvos</h2>
+          <div class="panel-actions">
+            <button class="ghost" id="toggle-cards">Esconder respostas</button>
+            <button class="ghost" id="collapse-cards">Expandir</button>
+            <button class="ghost" id="refresh">Atualizar</button>
+            <select id="download-format" class="ghost">
+              <option value="csv">CSV</option>
+              <option value="xlsx">XLSX</option>
+            </select>
+            <button class="ghost" id="download">Baixar</button>
+          </div>
+        </div>
+        <div id="cards-wrapper" class="hidden">
+          <div id="cards" class="cards"></div>
+        </div>
+      </section>
+
+      <section class="panel panel-wide" id="playlist-section">
+        <div class="panel-header">
+          <h2>Playlist</h2>
+          <button class="ghost" id="collapse-playlist">Expandir</button>
+        </div>
+        <div id="playlist-wrapper" class="playlist hidden">
+          <iframe
+            id="playlist-frame"
+            title="Playlist"
+            src=""
+            frameborder="0"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy"
+          ></iframe>
+          <p class="muted" id="playlist-hint">Configure a playlist no ícone ⚙️.</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

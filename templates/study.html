@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Modo Estudo</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body class="study-body">
+    <div class="bg-layer"></div>
+    <div class="topbar">
+      <div class="theme-switch">
+        <button class="ghost theme-btn" data-theme="light">Light</button>
+        <button class="ghost theme-btn" data-theme="dark">Dark</button>
+        <button class="ghost theme-btn" data-theme="sand">Sand</button>
+        <button class="ghost theme-btn" data-theme="mint">Mint</button>
+      </div>
+      <a class="ghost-link" href="/">Voltar</a>
+    </div>
+    <header class="study-header">
+      <div>
+        <p class="eyebrow">Modo estudo</p>
+        <h1>Foco total nos cards.</h1>
+        <p class="subhead">Marque acertos/erros e a dificuldade. No fim você recebe um relatório completo.</p>
+      </div>
+      <div class="study-actions">
+        <div class="session-pill">
+          <span>Tempo</span>
+          <strong id="timer">00:00</strong>
+        </div>
+        <div class="session-pill">
+          <span>Progresso</span>
+          <strong id="progress">0/0</strong>
+        </div>
+      </div>
+    </header>
+
+    <main class="study-layout">
+      <section class="study-panel">
+        <div class="study-card" id="study-card">
+          <h2 id="card-question">Carregando...</h2>
+          <p id="card-answer" class="hidden"></p>
+        </div>
+
+        <div class="study-controls">
+          <button id="toggle-answer">Mostrar resposta</button>
+          <div class="study-nav">
+            <button class="ghost" id="prev">Anterior</button>
+            <button class="ghost" id="next">Próximo</button>
+          </div>
+        </div>
+
+        <div class="study-actions-row">
+          <div class="field">
+            <label for="study-collection">Coleção</label>
+            <select id="study-collection"></select>
+          </div>
+          <button class="ghost" id="reload-cards">Recarregar cards</button>
+        </div>
+
+        <div class="study-rating">
+          <div class="rating-group">
+            <span>Resultado</span>
+            <div>
+              <button class="ghost" data-result="correct">Acertei</button>
+              <button class="ghost" data-result="incorrect">Errei</button>
+            </div>
+          </div>
+          <div class="rating-group">
+            <span>Dificuldade</span>
+            <div>
+              <button class="ghost" data-difficulty="easy">Fácil</button>
+              <button class="ghost" data-difficulty="hard">Difícil</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="study-footer">
+          <button id="finish" class="accent">Finalizar sessão</button>
+          <button id="continue" class="ghost">Continuar sessão</button>
+          <p id="study-status" class="status"></p>
+        </div>
+      </section>
+
+      <section class="study-panel report hidden" id="report">
+        <h2>Relatório final</h2>
+        <div class="report-grid">
+          <div class="report-card">
+            <span>Acertos</span>
+            <strong id="report-correct">0</strong>
+          </div>
+          <div class="report-card">
+            <span>Erros</span>
+            <strong id="report-incorrect">0</strong>
+          </div>
+          <div class="report-card">
+            <span>Fáceis</span>
+            <strong id="report-easy">0</strong>
+          </div>
+          <div class="report-card">
+            <span>Difíceis</span>
+            <strong id="report-hard">0</strong>
+          </div>
+        </div>
+
+        <div class="report-section">
+          <h3>Cards fáceis</h3>
+          <ul id="easy-list"></ul>
+        </div>
+        <div class="report-section">
+          <h3>Cards difíceis</h3>
+          <ul id="hard-list"></ul>
+        </div>
+        <div class="report-section">
+          <h3>Erros</h3>
+          <ul id="wrong-list"></ul>
+        </div>
+        <div class="report-section">
+          <h3>Recomendação</h3>
+          <p id="recommendation" class="muted"></p>
+        </div>
+      </section>
+
+      <section class="study-panel sessions" id="sessions">
+        <div class="panel-header">
+          <h2>Sessões salvas</h2>
+          <button class="ghost" id="refresh-sessions">Atualizar</button>
+        </div>
+        <div id="sessions-list" class="sessions-list"></div>
+      </section>
+    </main>
+
+    <script src="/static/study.js"></script>
+  </body>
+</html>
