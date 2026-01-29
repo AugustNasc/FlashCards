@@ -24,9 +24,22 @@ Construído com **Flask + SQLite**, funciona **sem login**, é simples de rodar 
   - validação automática de `question` e `answer`
 - 🎨 **Temas rápidos**  
   - Light, Dark, Sand, Mint
+- 🎯 **Metas de estudo por coleção**
+  - escolha os dias da semana para estudar cada tema
 - ⚙️ **Configurações**
   - API key da OpenAI
-  - playlist opcional (Spotify / YouTube embed)
+
+---
+
+## 🆕 Updates e melhorias
+
+- 🎯 **Metas de estudo por coleção** com seleção de dias da semana
+- ✅ **Modo estudo com setup** (coleção, tempo máximo e filtro por dificuldade quando disponível)
+- 🧭 **Acesso ao estudo bloqueado** sem coleção criada
+- 🗂️ **Migração de cards entre coleções**
+- 🧨 **Exclusão de coleção remove os cards associados**
+- 📦 **Importação com painel dedicado** em “Meus Cards”
+- 🏷️ **Cards mostram a coleção de origem**
 
 ---
 
@@ -93,7 +106,8 @@ python app.py
 
 - Crie coleções para organizar seus cards
 - Filtre geração, importação, exportação e estudo por coleção
-- Ao excluir uma coleção, os cards não são apagados
+- Ao excluir uma coleção, os cards associados são apagados
+- Você pode migrar cards para outra coleção antes de excluir
 
 ---
 
@@ -133,12 +147,6 @@ Ou:
 - Respeita a coleção selecionada
 
 ---
-
-## 🎧 Playlist (opcional)
-
-- Ative nas configurações
-- Use links embed (Spotify, YouTube)
-- Pode ser recolhida ou expandida
 
 ---
 
