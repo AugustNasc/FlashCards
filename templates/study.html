@@ -36,7 +36,38 @@
     </header>
 
     <main class="study-layout">
-      <section class="study-panel">
+      <section class="study-panel" id="study-setup">
+        <h2>Configurar sessão</h2>
+        <p class="muted">
+          Escolha a coleção, defina tempo máximo (opcional) e inicie a sessão.
+        </p>
+        <div id="study-locked" class="notice warning hidden" role="status" aria-live="polite">
+          Você precisa ter uma coleção criada para acessar o modo estudo.
+        </div>
+        <div class="field">
+          <label for="study-collection">Coleção</label>
+          <select id="study-collection"></select>
+          <p id="study-collection-status" class="status"></p>
+        </div>
+        <div class="field" id="difficulty-filter-field">
+          <label for="difficulty-filter">Nível de dificuldade</label>
+          <select id="difficulty-filter" disabled>
+            <option value="">Todos</option>
+            <option value="easy">Fácil</option>
+            <option value="hard">Difícil</option>
+          </select>
+          <p class="muted">Disponível após completar todos os cards da coleção.</p>
+        </div>
+        <div class="field">
+          <label for="session-time">Tempo de sessão (minutos)</label>
+          <input id="session-time" type="number" min="0" max="240" value="0" />
+          <p class="muted">Use 0 para sem limite.</p>
+        </div>
+        <button id="start-session">Iniciar sessão</button>
+        <p id="setup-status" class="status"></p>
+      </section>
+
+      <section class="study-panel hidden" id="study-session">
         <div class="study-card" id="study-card">
           <h2 id="card-question">Carregando...</h2>
           <p id="card-answer" class="hidden"></p>
@@ -51,10 +82,6 @@
         </div>
 
         <div class="study-actions-row">
-          <div class="field">
-            <label for="study-collection">Coleção</label>
-            <select id="study-collection"></select>
-          </div>
           <button class="ghost" id="reload-cards">Recarregar cards</button>
         </div>
 
@@ -77,7 +104,7 @@
 
         <div class="study-footer">
           <button id="finish" class="accent">Finalizar sessão</button>
-          <button id="continue" class="ghost">Continuar sessão</button>
+          <button id="continue" class="ghost">Começar nova Sessão</button>
           <p id="study-status" class="status"></p>
         </div>
       </section>

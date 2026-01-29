@@ -27,15 +27,6 @@
         <input id="api-key" type="password" placeholder="Cole sua chave aqui" />
         <p class="muted">A chave fica salva no seu navegador.</p>
       </div>
-      <div class="field">
-        <label for="playlist">Playlist (link de embed)</label>
-        <input id="playlist" type="text" placeholder="Cole o link de embed (Spotify, YouTube etc.)" />
-        <p class="muted">Use o link de incorporação para tocar dentro do app.</p>
-      </div>
-      <div class="field toggle-row">
-        <label for="playlist-enabled">Ativar playlist</label>
-        <input id="playlist-enabled" type="checkbox" />
-      </div>
       <button id="save-settings">Salvar configurações</button>
       <p id="settings-status" class="status"></p>
     </div>
@@ -49,14 +40,37 @@
       </div>
       <div class="hero-card">
         <div class="stat">
-          <span>Cards salvos</span>
+          <span>Meus Cards</span>
           <strong id="card-count">0</strong>
         </div>
         <div class="stat">
           <span>Foco em estudo</span>
           <strong>Sem distrações</strong>
         </div>
-        <a class="cta-link" href="/study">Abrir modo estudo</a>
+        <div class="stat meta-goals-row">
+          <span>Metas de estudo</span>
+          <div class="help-anchor">
+            <button class="ghost" id="open-goals">Definir metas</button>
+            <div id="goals-panel" class="help-panel hidden" role="note" aria-live="polite">
+              <strong>Metas por dias</strong>
+              <p>Escolha os dias em que deseja estudar esta coleção.</p>
+              <div class="goal-controls" id="goal-controls">
+                <button class="ghost goal-day" data-day="1">Seg</button>
+                <button class="ghost goal-day" data-day="2">Ter</button>
+                <button class="ghost goal-day" data-day="3">Qua</button>
+                <button class="ghost goal-day" data-day="4">Qui</button>
+                <button class="ghost goal-day" data-day="5">Sex</button>
+                <button class="ghost goal-day" data-day="6">Sáb</button>
+                <button class="ghost goal-day" data-day="0">Dom</button>
+              </div>
+              <div class="inline goals-actions">
+                <button class="ghost" id="clear-goals">Limpar metas</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p id="goals-status" class="status"></p>
+        <button class="cta-link" id="open-study">Abrir modo estudo</button>
       </div>
     </header>
 
@@ -65,11 +79,25 @@
         <div class="panel-header">
           <h2>Coleções</h2>
         </div>
+        <div id="collection-warning" class="notice warning hidden" role="status" aria-live="polite">
+          <span>Para começar, crie uma coleção e selecione-a antes de criar ou importar cards.</span>
+          <button class="ghost small" id="focus-collection">Criar coleção</button>
+        </div>
         <div class="collections">
           <div class="field">
             <label for="collection-select">Selecionar coleção</label>
             <select id="collection-select"></select>
-            <button class="ghost" id="delete-collection">Excluir coleção</button>
+            <div class="inline">
+              <button class="ghost danger" id="delete-collection">Excluir coleção</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="migrate-select">Migrar cards para</label>
+            <div class="inline">
+              <select id="migrate-select"></select>
+              <button class="ghost" id="migrate-cards">Migrar</button>
+            </div>
+            <p id="migrate-status" class="status"></p>
           </div>
           <div class="field">
             <label for="collection-name">Nova coleção</label>
@@ -78,12 +106,6 @@
               <button id="create-collection">Criar</button>
             </div>
             <p id="collection-status" class="status"></p>
-          </div>
-          <div class="field">
-            <label for="import-file">Importar cards</label>
-            <input id="import-file" type="file" accept=".csv,.json" />
-            <button class="ghost" id="import-cards">Importar</button>
-            <p id="import-status" class="status"></p>
           </div>
         </div>
       </section>
@@ -124,16 +146,39 @@
 
       <section class="panel panel-wide">
         <div class="panel-header">
-          <h2>Cards salvos</h2>
+          <h2>Meus Cards</h2>
           <div class="panel-actions">
             <button class="ghost" id="toggle-cards">Esconder respostas</button>
             <button class="ghost" id="collapse-cards">Expandir</button>
             <button class="ghost" id="refresh">Atualizar</button>
+            <button class="ghost" id="open-import">Importar cards</button>
             <select id="download-format" class="ghost">
               <option value="csv">CSV</option>
               <option value="xlsx">XLSX</option>
             </select>
             <button class="ghost" id="download">Baixar</button>
+          </div>
+          <div id="import-panel" class="help-panel hidden import-panel help-anchor" role="note" aria-live="polite">
+            <div class="field">
+              <label for="import-file">Arquivo</label>
+              <div class="inline inline-help">
+                <input id="import-file" type="file" accept=".csv,.json" />
+                <button class="ghost icon-btn help-btn" id="import-help" aria-label="Ajuda para importação">?</button>
+              </div>
+              <div id="import-help-panel" class="help-panel hidden" role="note" aria-live="polite">
+                <strong>Como importar</strong>
+                <p>CSV: precisa ter colunas <em>question</em> e <em>answer</em>. Exemplo:</p>
+                <pre><code>question,answer
+O que é SQL?,Linguagem para bancos relacionais</code></pre>
+                <p>JSON: array de objetos ou objeto com <em>cards</em>:</p>
+                <pre><code>[
+  { "question": "O que é Python?", "answer": "Uma linguagem de programação" }
+]</code></pre>
+                <p>Evite arquivos muito grandes e revise se não há linhas vazias.</p>
+              </div>
+            </div>
+            <button class="ghost" id="import-cards">Importar</button>
+            <p id="import-status" class="status"></p>
           </div>
         </div>
         <div id="cards-wrapper" class="hidden">
@@ -141,24 +186,20 @@
         </div>
       </section>
 
-      <section class="panel panel-wide" id="playlist-section">
-        <div class="panel-header">
-          <h2>Playlist</h2>
-          <button class="ghost" id="collapse-playlist">Expandir</button>
-        </div>
-        <div id="playlist-wrapper" class="playlist hidden">
-          <iframe
-            id="playlist-frame"
-            title="Playlist"
-            src=""
-            frameborder="0"
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            loading="lazy"
-          ></iframe>
-          <p class="muted" id="playlist-hint">Configure a playlist no ícone ⚙️.</p>
-        </div>
-      </section>
     </main>
+
+    <div id="confirm-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="confirm-title">Confirmar ação</h3>
+        </div>
+        <p id="confirm-message" class="muted"></p>
+        <div class="modal-actions">
+          <button class="ghost" id="confirm-cancel">Cancelar</button>
+          <button class="accent danger" id="confirm-ok">Confirmar</button>
+        </div>
+      </div>
+    </div>
 
     <script src="/static/app.js"></script>
   </body>

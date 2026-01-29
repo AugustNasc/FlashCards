@@ -12,6 +12,7 @@ const downloadFormat = document.getElementById("download-format");
 const toggleCardsBtn = document.getElementById("toggle-cards");
 const collapseCardsBtn = document.getElementById("collapse-cards");
 const cardsWrapper = document.getElementById("cards-wrapper");
+const openStudyBtn = document.getElementById("open-study");
 
 const openSettingsBtn = document.getElementById("open-settings");
 const closeSettingsBtn = document.getElementById("close-settings");
@@ -19,13 +20,6 @@ const settingsPanel = document.getElementById("settings");
 const saveSettingsBtn = document.getElementById("save-settings");
 const settingsStatus = document.getElementById("settings-status");
 const apiKeyInput = document.getElementById("api-key");
-const playlistInput = document.getElementById("playlist");
-const playlistEnabledInput = document.getElementById("playlist-enabled");
-const playlistFrame = document.getElementById("playlist-frame");
-const playlistWrapper = document.getElementById("playlist-wrapper");
-const playlistHint = document.getElementById("playlist-hint");
-const collapsePlaylistBtn = document.getElementById("collapse-playlist");
-const playlistSection = document.getElementById("playlist-section");
 const themeButtons = document.querySelectorAll(".theme-btn");
 const collectionSelect = document.getElementById("collection-select");
 const collectionNameInput = document.getElementById("collection-name");
@@ -35,8 +29,44 @@ const deleteCollectionBtn = document.getElementById("delete-collection");
 const importFileInput = document.getElementById("import-file");
 const importCardsBtn = document.getElementById("import-cards");
 const importStatus = document.getElementById("import-status");
+const importHelpBtn = document.getElementById("import-help");
+const importHelpPanel = document.getElementById("import-help-panel");
+const openImportBtn = document.getElementById("open-import");
+const importPanel = document.getElementById("import-panel");
+const goalButtons = Array.from(document.querySelectorAll(".goal-day"));
+const clearGoalsBtn = document.getElementById("clear-goals");
+const goalsStatus = document.getElementById("goals-status");
+const openGoalsBtn = document.getElementById("open-goals");
+const goalsPanel = document.getElementById("goals-panel");
+const migrateSelect = document.getElementById("migrate-select");
+const migrateCardsBtn = document.getElementById("migrate-cards");
+const migrateStatus = document.getElementById("migrate-status");
+const collectionWarning = document.getElementById("collection-warning");
+const focusCollectionBtn = document.getElementById("focus-collection");
+const confirmModal = document.getElementById("confirm-modal");
+const confirmTitle = document.getElementById("confirm-title");
+const confirmMessage = document.getElementById("confirm-message");
+const confirmCancel = document.getElementById("confirm-cancel");
+const confirmOk = document.getElementById("confirm-ok");
 
 let progressInterval = null;
+let collectionsCache = [];
+let confirmAction = null;
+
+function openConfirm({ title, message, okText = "Confirmar", danger = false, onConfirm }) {
+  confirmTitle.textContent = title;
+  confirmMessage.textContent = message;
+  confirmOk.textContent = okText;
+  confirmOk.classList.toggle("danger", danger);
+  confirmOk.classList.toggle("accent", true);
+  confirmModal.classList.remove("hidden");
+  confirmAction = onConfirm;
+}
+
+function closeConfirm() {
+  confirmModal.classList.add("hidden");
+  confirmAction = null;
+}
 
 function getApiKey() {
   return localStorage.getItem("openai_api_key") || "";
@@ -58,19 +88,27 @@ function setTheme(theme) {
   });
 }
 
+function setCardActionsEnabled(enabled) {
+  collectionWarning.classList.toggle("hidden", enabled);
+}
+
+function nudgeToCollectionWarning() {
+  collectionWarning.classList.remove("hidden");
+  collectionWarning.classList.remove("shake");
+  void collectionWarning.offsetWidth;
+  collectionWarning.classList.add("shake");
+  collectionWarning.scrollIntoView({ behavior: "smooth", block: "start" });
+  window.scrollTo({
+    top: Math.max(0, collectionWarning.getBoundingClientRect().top + window.scrollY - 20),
+    behavior: "smooth",
+  });
+}
+
 function loadSettings() {
   const savedKey = getApiKey();
   if (savedKey) apiKeyInput.value = savedKey;
   const savedTheme = localStorage.getItem("theme") || "light";
   setTheme(savedTheme);
-  const savedPlaylist = localStorage.getItem("playlist_url") || "";
-  const playlistEnabled = localStorage.getItem("playlist_enabled") === "true";
-  playlistEnabledInput.checked = playlistEnabled;
-  if (savedPlaylist) {
-    playlistInput.value = savedPlaylist;
-    playlistFrame.src = savedPlaylist;
-  }
-  updatePlaylistVisibility();
 }
 
 function setStatus(el, text) {
@@ -111,15 +149,27 @@ function renderCards(cards) {
   cardsEl.innerHTML = "";
   cardCountEl.textContent = cards.length;
   cards.forEach((card, index) => {
+    const collectionName = getCollectionName(card.collection_id);
     const item = document.createElement("div");
     item.className = "card";
     item.style.animationDelay = `${index * 40}ms`;
+    const date = new Date(card.created_at);
+    const dateLabel = date.toLocaleDateString();
+    const timeLabel = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     item.innerHTML = `
       <h3>${escapeHtml(card.question)}</h3>
       <p>${escapeHtml(card.answer)}</p>
       <div class="meta">
-        <span>${new Date(card.created_at).toLocaleString()}</span>
-        <button class="delete" data-id="${card.id}">Excluir</button>
+        <div class="meta-left">
+          <span class="card-collection">${escapeHtml(collectionName)}</span>
+          <span class="meta-date">
+            <time>${dateLabel}</time>
+            <time>${timeLabel}</time>
+          </span>
+        </div>
+        <div class="meta-right">
+          <button class="delete" data-id="${card.id}">Excluir</button>
+        </div>
       </div>
     `;
     cardsEl.appendChild(item);
@@ -133,6 +183,12 @@ function renderCards(cards) {
   });
 }
 
+function getCollectionName(collectionId) {
+  if (!collectionId) return "Sem coleção";
+  const match = collectionsCache.find((col) => String(col.id) === String(collectionId));
+  return match ? match.name : "Coleção";
+}
+
 function escapeHtml(value) {
   const div = document.createElement("div");
   div.textContent = value;
@@ -143,6 +199,11 @@ generateBtn.addEventListener("click", async () => {
   const topic = document.getElementById("topic").value.trim();
   const count = Number(document.getElementById("count").value || 5);
   const collectionId = getActiveCollection();
+  if (!collectionId) {
+    setStatus(generateStatus, "Selecione uma coleção antes de gerar cards.");
+    nudgeToCollectionWarning();
+    return;
+  }
   setStatus(generateStatus, "Gerando cards...");
   setStatus(usageStatus, "");
   const startedAt = performance.now();
@@ -185,6 +246,11 @@ saveBtn.addEventListener("click", async () => {
   const question = document.getElementById("question").value.trim();
   const answer = document.getElementById("answer").value.trim();
   const collectionId = getActiveCollection();
+  if (!collectionId) {
+    setStatus(saveStatus, "Selecione uma coleção antes de salvar.");
+    nudgeToCollectionWarning();
+    return;
+  }
   setStatus(saveStatus, "Salvando...");
   saveBtn.disabled = true;
   try {
@@ -227,25 +293,6 @@ closeSettingsBtn.addEventListener("click", () => {
   settingsPanel.classList.add("hidden");
 });
 
-function updatePlaylistVisibility() {
-  const enabled = playlistEnabledInput.checked;
-  if (!enabled) {
-    playlistSection.classList.add("hidden");
-    return;
-  }
-  playlistSection.classList.remove("hidden");
-  playlistWrapper.classList.add("hidden");
-  const url = playlistInput.value.trim();
-  if (url) {
-    playlistFrame.src = url;
-    playlistFrame.style.display = "block";
-    playlistHint.textContent = "";
-  } else {
-    playlistFrame.style.display = "none";
-    playlistHint.textContent = "Configure a playlist no ícone ⚙️.";
-  }
-}
-
 saveSettingsBtn.addEventListener("click", () => {
   const key = apiKeyInput.value.trim();
   if (key) {
@@ -253,16 +300,6 @@ saveSettingsBtn.addEventListener("click", () => {
   } else {
     localStorage.removeItem("openai_api_key");
   }
-  const playlistUrl = playlistInput.value.trim();
-  if (playlistUrl) {
-    localStorage.setItem("playlist_url", playlistUrl);
-    playlistFrame.src = playlistUrl;
-  } else {
-    localStorage.removeItem("playlist_url");
-    playlistFrame.src = "";
-  }
-  localStorage.setItem("playlist_enabled", playlistEnabledInput.checked ? "true" : "false");
-  updatePlaylistVisibility();
   setStatus(settingsStatus, "Configurações salvas.");
   setTimeout(() => setStatus(settingsStatus, ""), 2000);
 });
@@ -285,18 +322,10 @@ collapseCardsBtn.addEventListener("click", () => {
     : "Recolher";
 });
 
-collapsePlaylistBtn.addEventListener("click", () => {
-  playlistWrapper.classList.toggle("hidden");
-  collapsePlaylistBtn.textContent = playlistWrapper.classList.contains("hidden")
-    ? "Expandir"
-    : "Recolher";
-});
-
-playlistEnabledInput.addEventListener("change", updatePlaylistVisibility);
-
 async function loadCollections() {
   const res = await fetch("/api/collections");
   const collections = await res.json();
+  collectionsCache = collections;
   collectionSelect.innerHTML = "";
   const optAll = document.createElement("option");
   optAll.value = "";
@@ -311,6 +340,27 @@ async function loadCollections() {
   const saved = getActiveCollection();
   collectionSelect.value = saved;
   deleteCollectionBtn.disabled = !collectionSelect.value;
+  setCardActionsEnabled(!!collectionSelect.value);
+  openStudyBtn.disabled = collectionsCache.length === 0;
+  renderMigrateOptions();
+  await loadGoals();
+}
+
+function renderMigrateOptions() {
+  const activeId = getActiveCollection();
+  migrateSelect.innerHTML = "";
+  const optPlaceholder = document.createElement("option");
+  optPlaceholder.value = "";
+  optPlaceholder.textContent = "Selecione destino";
+  migrateSelect.appendChild(optPlaceholder);
+  collectionsCache.forEach((col) => {
+    if (String(col.id) === String(activeId)) return;
+    const opt = document.createElement("option");
+    opt.value = col.id;
+    opt.textContent = col.name;
+    migrateSelect.appendChild(opt);
+  });
+  migrateCardsBtn.disabled = !activeId || !migrateSelect.value;
 }
 
 createCollectionBtn.addEventListener("click", async () => {
@@ -339,18 +389,80 @@ deleteCollectionBtn.addEventListener("click", async () => {
     setStatus(collectionStatus, "Selecione uma coleção para excluir.");
     return;
   }
-  const confirmed = confirm("Deseja excluir esta coleção? Os cards ficarão sem coleção.");
-  if (!confirmed) return;
-  await fetch(`/api/collections/${id}`, { method: "DELETE" });
-  setActiveCollection("");
-  await loadCollections();
-  fetchCards();
+  openConfirm({
+    title: "Excluir coleção",
+    message:
+      "Deseja excluir esta coleção? Todos os cards dentro dela serão apagados. Se preferir, migre antes.",
+    okText: "Excluir",
+    danger: true,
+    onConfirm: async () => {
+      await fetch(`/api/collections/${id}`, { method: "DELETE" });
+      setActiveCollection("");
+      await loadCollections();
+      fetchCards();
+    },
+  });
+});
+
+openStudyBtn.addEventListener("click", async () => {
+  try {
+    const res = await fetch("/api/collections");
+    const collections = await res.json();
+    if (!res.ok || !collections.length) {
+      nudgeToCollectionWarning();
+      return;
+    }
+    window.location.href = "/study";
+  } catch (err) {
+    nudgeToCollectionWarning();
+  }
 });
 
 collectionSelect.addEventListener("change", () => {
   setActiveCollection(collectionSelect.value);
   deleteCollectionBtn.disabled = !collectionSelect.value;
+  setCardActionsEnabled(!!collectionSelect.value);
+  renderMigrateOptions();
   fetchCards();
+  loadGoals();
+});
+
+migrateSelect.addEventListener("change", () => {
+  migrateCardsBtn.disabled = !getActiveCollection() || !migrateSelect.value;
+});
+
+migrateCardsBtn.addEventListener("click", async () => {
+  const sourceId = getActiveCollection();
+  const targetId = migrateSelect.value;
+  if (!sourceId) {
+    setStatus(migrateStatus, "Selecione uma coleção de origem.");
+    return;
+  }
+  if (!targetId) {
+    setStatus(migrateStatus, "Selecione uma coleção de destino.");
+    return;
+  }
+  openConfirm({
+    title: "Migrar cards",
+    message: "Migrar todos os cards desta coleção para a coleção de destino?",
+    okText: "Migrar",
+    onConfirm: async () => {
+      const res = await fetch(`/api/collections/${sourceId}/migrate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target_collection_id: targetId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatus(migrateStatus, data.error || "Erro ao migrar.");
+        return;
+      }
+      setStatus(migrateStatus, `Migrados ${data.moved} cards.`);
+      setTimeout(() => setStatus(migrateStatus, ""), 2000);
+      await loadCollections();
+      fetchCards();
+    },
+  });
 });
 
 function parseCsv(text) {
@@ -373,8 +485,18 @@ function parseCsv(text) {
 
 importCardsBtn.addEventListener("click", async () => {
   const file = importFileInput.files[0];
+  const collectionId = getActiveCollection();
+  if (!collectionId) {
+    setStatus(importStatus, "Selecione uma coleção antes de importar.");
+    nudgeToCollectionWarning();
+    return;
+  }
   if (!file) {
     setStatus(importStatus, "Selecione um arquivo CSV ou JSON.");
+    return;
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    setStatus(importStatus, "Arquivo muito grande. Tente até 2MB.");
     return;
   }
   const text = await file.text();
@@ -388,30 +510,189 @@ importCardsBtn.addEventListener("click", async () => {
       return;
     }
   } else {
-    cards = parseCsv(text);
+    try {
+      cards = parseCsv(text);
+    } catch (err) {
+      setStatus(importStatus, "CSV inválido. Verifique as colunas question/answer.");
+      return;
+    }
   }
   if (!cards.length) {
-    setStatus(importStatus, "Nenhum card válido encontrado.");
+    setStatus(
+      importStatus,
+      "Nenhum card válido encontrado. Confira se existem colunas question/answer e linhas preenchidas."
+    );
     return;
   }
-  const collectionId = getActiveCollection();
-  const res = await fetch("/api/import", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cards, collection_id: collectionId || null }),
+  cards = cards
+    .map((card) => ({
+      question: String(card.question || "").trim(),
+      answer: String(card.answer || "").trim(),
+    }))
+    .filter((card) => card.question && card.answer);
+  if (!cards.length) {
+    setStatus(importStatus, "Todos os cards estão vazios ou inválidos.");
+    return;
+  }
+  try {
+    const res = await fetch("/api/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cards, collection_id: collectionId || null }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setStatus(importStatus, data.error || "Erro ao importar.");
+      return;
+    }
+    setStatus(importStatus, `Importados ${data.count} cards.`);
+    fetchCards();
+  } catch (err) {
+    setStatus(importStatus, "Falha de rede ao importar. Tente novamente.");
+  }
+});
+
+importHelpBtn.addEventListener("click", (event) => {
+  event.stopPropagation();
+  importHelpPanel.classList.toggle("hidden");
+});
+
+importHelpPanel.addEventListener("click", (event) => {
+  event.stopPropagation();
+});
+
+openImportBtn.addEventListener("click", (event) => {
+  event.stopPropagation();
+  importPanel.classList.toggle("hidden");
+});
+
+importPanel.addEventListener("click", (event) => {
+  event.stopPropagation();
+});
+
+openGoalsBtn.addEventListener("click", (event) => {
+  event.stopPropagation();
+  goalsPanel.classList.toggle("hidden");
+});
+
+goalsPanel.addEventListener("click", (event) => {
+  event.stopPropagation();
+});
+
+document.addEventListener("click", () => {
+  importHelpPanel.classList.add("hidden");
+  importPanel.classList.add("hidden");
+  goalsPanel.classList.add("hidden");
+});
+
+confirmCancel.addEventListener("click", closeConfirm);
+confirmOk.addEventListener("click", async () => {
+  if (typeof confirmAction === "function") {
+    await confirmAction();
+  }
+  closeConfirm();
+});
+
+confirmModal.addEventListener("click", (event) => {
+  if (event.target === confirmModal) {
+    closeConfirm();
+  }
+});
+
+focusCollectionBtn.addEventListener("click", () => {
+  collectionNameInput.focus();
+});
+
+function setGoalsEnabled(enabled) {
+  goalButtons.forEach((btn) => {
+    btn.disabled = !enabled;
   });
-  const data = await res.json();
-  if (!res.ok) {
-    setStatus(importStatus, data.error || "Erro ao importar.");
+  clearGoalsBtn.disabled = !enabled;
+  openGoalsBtn.disabled = !enabled;
+}
+
+function applyGoalDays(days) {
+  const set = new Set(days);
+  goalButtons.forEach((btn) => {
+    btn.classList.toggle("active", set.has(Number(btn.dataset.day)));
+  });
+}
+
+function getSelectedGoalDays() {
+  return goalButtons
+    .filter((btn) => btn.classList.contains("active"))
+    .map((btn) => Number(btn.dataset.day));
+}
+
+async function loadGoals() {
+  const collectionId = getActiveCollection();
+  if (!collectionId) {
+    applyGoalDays([]);
+    setGoalsEnabled(false);
+    setStatus(goalsStatus, "Selecione uma coleção para definir metas.");
     return;
   }
-  setStatus(importStatus, `Importados ${data.count} cards.`);
-  fetchCards();
+  setGoalsEnabled(true);
+  try {
+    const res = await fetch(`/api/goals/${collectionId}`);
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || "Erro ao carregar metas.");
+    }
+    applyGoalDays(data.days || []);
+    setStatus(goalsStatus, "Metas carregadas.");
+    setTimeout(() => setStatus(goalsStatus, ""), 1500);
+  } catch (err) {
+    setStatus(goalsStatus, err.message);
+  }
+}
+
+async function saveGoals() {
+  const collectionId = getActiveCollection();
+  if (!collectionId) return;
+  const days = getSelectedGoalDays();
+  try {
+    const res = await fetch(`/api/goals/${collectionId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ days }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || "Erro ao salvar metas.");
+    }
+    setStatus(goalsStatus, "Metas salvas.");
+    setTimeout(() => setStatus(goalsStatus, ""), 1500);
+  } catch (err) {
+    setStatus(goalsStatus, err.message);
+  }
+}
+
+goalButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    btn.classList.toggle("active");
+    saveGoals();
+  });
+});
+
+clearGoalsBtn.addEventListener("click", async () => {
+  const collectionId = getActiveCollection();
+  if (!collectionId) return;
+  applyGoalDays([]);
+  try {
+    const res = await fetch(`/api/goals/${collectionId}`, { method: "DELETE" });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || "Erro ao limpar metas.");
+    }
+    setStatus(goalsStatus, "Metas removidas.");
+    setTimeout(() => setStatus(goalsStatus, ""), 1500);
+  } catch (err) {
+    setStatus(goalsStatus, err.message);
+  }
 });
 
 loadSettings();
-loadCollections();
-fetchCards();
+loadCollections().then(fetchCards);
 
 collapseCardsBtn.textContent = cardsWrapper.classList.contains("hidden") ? "Expandir" : "Recolher";
-collapsePlaylistBtn.textContent = playlistWrapper.classList.contains("hidden") ? "Expandir" : "Recolher";

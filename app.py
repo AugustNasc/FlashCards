@@ -60,6 +60,26 @@ def init_db():
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS card_difficulty (
+                card_id INTEGER PRIMARY KEY,
+                difficulty TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS study_goals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                collection_id INTEGER NOT NULL UNIQUE,
+                days_json TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
 
 
 def row_to_dict(row):
@@ -117,12 +137,17 @@ def list_cards():
 def study_cards():
     limit = request.args.get("limit", "").strip()
     collection_id = request.args.get("collection_id", "").strip()
+    difficulty = request.args.get("difficulty", "").strip().lower()
+    if not collection_id.isdigit():
+        return jsonify({"error": "collection_id é obrigatório."}), 400
     with get_db() as conn:
         where_clause = ""
         params = []
-        if collection_id.isdigit():
-            where_clause = "WHERE collection_id = ?"
-            params.append(int(collection_id))
+        where_clause = "WHERE collection_id = ?"
+        params.append(int(collection_id))
+        if difficulty in ("easy", "hard"):
+            where_clause += " AND id IN (SELECT card_id FROM card_difficulty WHERE difficulty = ?)"
+            params.append(difficulty)
         if limit.isdigit():
             rows = conn.execute(
                 f"""
@@ -175,6 +200,59 @@ def list_study_sessions():
     return jsonify(sessions)
 
 
+@app.route("/api/study/collections", methods=["GET"])
+def study_collections():
+    with get_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT c.id, c.name,
+                   COUNT(cards.id) AS card_count,
+                   (
+                     SELECT COUNT(*)
+                     FROM card_difficulty cd
+                     JOIN cards c2 ON c2.id = cd.card_id
+                     WHERE c2.collection_id = c.id
+                   ) AS difficulty_count
+                   ,
+                   (
+                     SELECT COUNT(*)
+                     FROM card_difficulty cd
+                     JOIN cards c2 ON c2.id = cd.card_id
+                     WHERE c2.collection_id = c.id AND cd.difficulty = 'easy'
+                   ) AS easy_count,
+                   (
+                     SELECT COUNT(*)
+                     FROM card_difficulty cd
+                     JOIN cards c2 ON c2.id = cd.card_id
+                     WHERE c2.collection_id = c.id AND cd.difficulty = 'hard'
+                   ) AS hard_count
+            FROM collections c
+            LEFT JOIN cards ON cards.collection_id = c.id
+            GROUP BY c.id
+            ORDER BY c.name ASC
+            """
+        ).fetchall()
+    payload = []
+    for row in rows:
+        card_count = int(row["card_count"] or 0)
+        difficulty_count = int(row["difficulty_count"] or 0)
+        easy_count = int(row["easy_count"] or 0)
+        hard_count = int(row["hard_count"] or 0)
+        ready = card_count > 0 and difficulty_count == card_count
+        payload.append(
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "card_count": card_count,
+                "difficulty_count": difficulty_count,
+                "easy_count": easy_count,
+                "hard_count": hard_count,
+                "difficulty_ready": ready,
+            }
+        )
+    return jsonify(payload)
+
+
 @app.route("/api/study/sessions", methods=["POST"])
 def create_study_session():
     data = request.get_json(force=True)
@@ -185,6 +263,7 @@ def create_study_session():
     easy = int(data.get("easy") or 0)
     hard = int(data.get("hard") or 0)
     details = data.get("details") or {}
+    collection_id = data.get("collection_id")
     created_at = datetime.now(timezone.utc).isoformat()
 
     with get_db() as conn:
@@ -206,6 +285,25 @@ def create_study_session():
             ),
         )
         session_id = cur.lastrowid
+        easy_cards = details.get("easy_cards") or []
+        hard_cards = details.get("hard_cards") or []
+        updated_at = created_at
+        card_updates = {}
+        for card_id in easy_cards:
+            if str(card_id).isdigit():
+                card_updates[int(card_id)] = "easy"
+        for card_id in hard_cards:
+            if str(card_id).isdigit():
+                card_updates[int(card_id)] = "hard"
+        if card_updates:
+            conn.executemany(
+                """
+                INSERT INTO card_difficulty (card_id, difficulty, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(card_id) DO UPDATE SET difficulty = excluded.difficulty, updated_at = excluded.updated_at
+                """,
+                [(card_id, difficulty, updated_at) for card_id, difficulty in card_updates.items()],
+            )
 
     return jsonify(
         {
@@ -234,10 +332,10 @@ def create_card():
     question = (data.get("question") or "").strip()
     answer = (data.get("answer") or "").strip()
     collection_id = data.get("collection_id")
+    if collection_id is None or not str(collection_id).isdigit():
+        return jsonify({"error": "Selecione uma coleção antes de criar cards."}), 400
     if not question or not answer:
         return jsonify({"error": "Pergunta e resposta são obrigatórias."}), 400
-    if collection_id is not None and not str(collection_id).isdigit():
-        return jsonify({"error": "collection_id inválido."}), 400
 
     created_at = datetime.now(timezone.utc).isoformat()
     with get_db() as conn:
@@ -246,13 +344,13 @@ def create_card():
             INSERT INTO cards (collection_id, question, answer, created_at)
             VALUES (?, ?, ?, ?)
             """,
-            (int(collection_id) if collection_id is not None else None, question, answer, created_at),
+            (int(collection_id), question, answer, created_at),
         )
         card_id = cur.lastrowid
     return jsonify(
         {
             "id": card_id,
-            "collection_id": int(collection_id) if collection_id is not None else None,
+            "collection_id": int(collection_id),
             "question": question,
             "answer": answer,
             "created_at": created_at,
@@ -286,6 +384,9 @@ def generate_cards():
     topic = (data.get("topic") or "").strip()
     count = int(data.get("count") or 5)
     count = max(1, min(count, 60))
+    collection_id = data.get("collection_id")
+    if collection_id is None or not str(collection_id).isdigit():
+        return jsonify({"error": "Selecione uma coleção antes de gerar cards."}), 400
 
     prompt = (
         "Gere flashcards no formato JSON. "
@@ -324,9 +425,6 @@ def generate_cards():
 
     saved = []
     created_at = datetime.now(timezone.utc).isoformat()
-    collection_id = data.get("collection_id")
-    if collection_id is not None and not str(collection_id).isdigit():
-        return jsonify({"error": "collection_id inválido."}), 400
     with get_db() as conn:
         for card in cards:
             question = str(card.get("question", "")).strip()
@@ -339,7 +437,7 @@ def generate_cards():
                 VALUES (?, ?, ?, ?)
                 """,
                 (
-                    int(collection_id) if collection_id is not None else None,
+                    int(collection_id),
                     question,
                     answer,
                     created_at,
@@ -348,7 +446,7 @@ def generate_cards():
             saved.append(
                 {
                     "id": cur.lastrowid,
-                    "collection_id": int(collection_id) if collection_id is not None else None,
+                    "collection_id": int(collection_id),
                     "question": question,
                     "answer": answer,
                     "created_at": created_at,
@@ -473,12 +571,113 @@ def create_collection():
 @app.route("/api/collections/<int:collection_id>", methods=["DELETE"])
 def delete_collection(collection_id):
     with get_db() as conn:
-        conn.execute(
-            "UPDATE cards SET collection_id = NULL WHERE collection_id = ?",
-            (collection_id,),
-        )
+        conn.execute("DELETE FROM cards WHERE collection_id = ?", (collection_id,))
+        conn.execute("DELETE FROM study_goals WHERE collection_id = ?", (collection_id,))
         conn.execute("DELETE FROM collections WHERE id = ?", (collection_id,))
     return jsonify({"ok": True})
+
+
+def _collection_exists(conn, collection_id):
+    row = conn.execute(
+        "SELECT id FROM collections WHERE id = ?",
+        (collection_id,),
+    ).fetchone()
+    return row is not None
+
+
+@app.route("/api/goals/<int:collection_id>", methods=["GET"])
+def get_goals(collection_id):
+    with get_db() as conn:
+        if not _collection_exists(conn, collection_id):
+            return jsonify({"error": "Coleção não encontrada."}), 404
+        row = conn.execute(
+            """
+            SELECT collection_id, days_json, created_at, updated_at
+            FROM study_goals
+            WHERE collection_id = ?
+            """,
+            (collection_id,),
+        ).fetchone()
+    if not row:
+        return jsonify({"collection_id": collection_id, "days": []})
+    return jsonify(
+        {
+            "collection_id": row["collection_id"],
+            "days": json.loads(row["days_json"]),
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
+    )
+
+
+@app.route("/api/goals/<int:collection_id>", methods=["PUT"])
+def save_goals(collection_id):
+    data = request.get_json(force=True)
+    days = data.get("days") or []
+    if not isinstance(days, list):
+        return jsonify({"error": "Formato inválido para dias."}), 400
+    try:
+        days = sorted({int(day) for day in days})
+    except (TypeError, ValueError):
+        return jsonify({"error": "Dias inválidos."}), 400
+    if any(day < 0 or day > 6 for day in days):
+        return jsonify({"error": "Dias devem estar entre 0 e 6."}), 400
+    now = datetime.now(timezone.utc).isoformat()
+    with get_db() as conn:
+        if not _collection_exists(conn, collection_id):
+            return jsonify({"error": "Coleção não encontrada."}), 404
+        existing = conn.execute(
+            "SELECT id FROM study_goals WHERE collection_id = ?",
+            (collection_id,),
+        ).fetchone()
+        if existing:
+            conn.execute(
+                """
+                UPDATE study_goals
+                SET days_json = ?, updated_at = ?
+                WHERE collection_id = ?
+                """,
+                (json.dumps(days), now, collection_id),
+            )
+        else:
+            conn.execute(
+                """
+                INSERT INTO study_goals (collection_id, days_json, created_at, updated_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (collection_id, json.dumps(days), now, now),
+            )
+    return jsonify({"collection_id": collection_id, "days": days, "updated_at": now})
+
+
+@app.route("/api/goals/<int:collection_id>", methods=["DELETE"])
+def delete_goals(collection_id):
+    with get_db() as conn:
+        if not _collection_exists(conn, collection_id):
+            return jsonify({"error": "Coleção não encontrada."}), 404
+        conn.execute("DELETE FROM study_goals WHERE collection_id = ?", (collection_id,))
+    return jsonify({"ok": True})
+
+
+@app.route("/api/collections/<int:collection_id>/migrate", methods=["POST"])
+def migrate_cards(collection_id):
+    data = request.get_json(force=True)
+    target_id = data.get("target_collection_id")
+    if target_id is None or not str(target_id).isdigit():
+        return jsonify({"error": "target_collection_id inválido."}), 400
+    target_id = int(target_id)
+    if target_id == collection_id:
+        return jsonify({"error": "A coleção de destino deve ser diferente."}), 400
+    with get_db() as conn:
+        if not _collection_exists(conn, collection_id):
+            return jsonify({"error": "Coleção de origem não encontrada."}), 404
+        if not _collection_exists(conn, target_id):
+            return jsonify({"error": "Coleção de destino não encontrada."}), 404
+        cur = conn.execute(
+            "UPDATE cards SET collection_id = ? WHERE collection_id = ?",
+            (target_id, collection_id),
+        )
+    return jsonify({"ok": True, "moved": cur.rowcount})
 
 
 @app.route("/api/import", methods=["POST"])
@@ -486,8 +685,8 @@ def import_cards():
     data = request.get_json(force=True)
     cards = data.get("cards") or []
     collection_id = data.get("collection_id")
-    if collection_id is not None and not str(collection_id).isdigit():
-        return jsonify({"error": "collection_id inválido."}), 400
+    if collection_id is None or not str(collection_id).isdigit():
+        return jsonify({"error": "Selecione uma coleção antes de importar cards."}), 400
 
     created_at = datetime.now(timezone.utc).isoformat()
     saved = []
@@ -503,7 +702,7 @@ def import_cards():
                 VALUES (?, ?, ?, ?)
                 """,
                 (
-                    int(collection_id) if collection_id is not None else None,
+                    int(collection_id),
                     question,
                     answer,
                     created_at,
@@ -512,7 +711,7 @@ def import_cards():
             saved.append(
                 {
                     "id": cur.lastrowid,
-                    "collection_id": int(collection_id) if collection_id is not None else None,
+                    "collection_id": int(collection_id),
                     "question": question,
                     "answer": answer,
                     "created_at": created_at,

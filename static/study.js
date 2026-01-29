@@ -13,6 +13,15 @@ const sessionsList = document.getElementById("sessions-list");
 const refreshSessionsBtn = document.getElementById("refresh-sessions");
 const reloadCardsBtn = document.getElementById("reload-cards");
 const studyCollectionSelect = document.getElementById("study-collection");
+const studySetup = document.getElementById("study-setup");
+const studySession = document.getElementById("study-session");
+const startSessionBtn = document.getElementById("start-session");
+const setupStatusEl = document.getElementById("setup-status");
+const studyLockedEl = document.getElementById("study-locked");
+const collectionStatusEl = document.getElementById("study-collection-status");
+const difficultyFilterField = document.getElementById("difficulty-filter-field");
+const difficultyFilterSelect = document.getElementById("difficulty-filter");
+const sessionTimeInput = document.getElementById("session-time");
 
 const themeButtons = document.querySelectorAll(".theme-btn");
 
@@ -24,8 +33,13 @@ let currentIndex = 0;
 let showAnswer = false;
 let startTime = Date.now();
 let timerInterval = null;
+let sessionMaxSec = 0;
+let activeCollectionId = "";
+let difficultyReady = false;
+let activeDifficulty = "";
+let collectionsData = [];
 const ratings = {};
-let sessionActive = true;
+let sessionActive = false;
 
 function loadTheme() {
   const theme = localStorage.getItem("theme") || "light";
@@ -46,10 +60,21 @@ function updateTimer() {
   const minutes = String(Math.floor(seconds / 60)).padStart(2, "0");
   const secs = String(seconds % 60).padStart(2, "0");
   timerEl.textContent = `${minutes}:${secs}`;
+  if (sessionMaxSec > 0 && seconds >= sessionMaxSec) {
+    finishSession(true);
+  }
 }
 
 function setStatus(text) {
   statusEl.textContent = text;
+}
+
+function setSetupStatus(text) {
+  setupStatusEl.textContent = text;
+}
+
+function setCollectionStatus(text) {
+  collectionStatusEl.textContent = text;
 }
 
 function getCurrentRating() {
@@ -124,31 +149,7 @@ function buildReport() {
   const wrongList = document.getElementById("wrong-list");
   const recommendation = document.getElementById("recommendation");
 
-  let correct = 0;
-  let incorrect = 0;
-  let easy = 0;
-  let hard = 0;
-
-  const easyItems = [];
-  const hardItems = [];
-  const wrongItems = [];
-
-  cards.forEach((card) => {
-    const rating = ratings[card.id] || {};
-    if (rating.result === "correct") correct += 1;
-    if (rating.result === "incorrect") {
-      incorrect += 1;
-      wrongItems.push(card);
-    }
-    if (rating.difficulty === "easy") {
-      easy += 1;
-      easyItems.push(card);
-    }
-    if (rating.difficulty === "hard") {
-      hard += 1;
-      hardItems.push(card);
-    }
-  });
+  const { correct, incorrect, easy, hard, easyItems, hardItems, wrongItems } = computeStats();
 
   reportCorrect.textContent = String(correct);
   reportIncorrect.textContent = String(incorrect);
@@ -179,6 +180,35 @@ function buildReport() {
   return { correct, incorrect, easy, hard };
 }
 
+function computeStats() {
+  let correct = 0;
+  let incorrect = 0;
+  let easy = 0;
+  let hard = 0;
+  const easyItems = [];
+  const hardItems = [];
+  const wrongItems = [];
+
+  cards.forEach((card) => {
+    const rating = ratings[card.id] || {};
+    if (rating.result === "correct") correct += 1;
+    if (rating.result === "incorrect") {
+      incorrect += 1;
+      wrongItems.push(card);
+    }
+    if (rating.difficulty === "easy") {
+      easy += 1;
+      easyItems.push(card);
+    }
+    if (rating.difficulty === "hard") {
+      hard += 1;
+      hardItems.push(card);
+    }
+  });
+
+  return { correct, incorrect, easy, hard, easyItems, hardItems, wrongItems };
+}
+
 function fillList(listEl, items) {
   listEl.innerHTML = "";
   if (!items.length) {
@@ -194,11 +224,39 @@ function fillList(listEl, items) {
   });
 }
 
-async function loadCards() {
-  const collectionId = studyCollectionSelect.value || "";
-  const url = collectionId ? `/api/study/cards?collection_id=${collectionId}` : "/api/study/cards";
-  const res = await fetch(url);
-  cards = await res.json();
+function applyDifficultyAvailability() {
+  const selectedId = studyCollectionSelect.value;
+  const selected = collectionsData.find((col) => String(col.id) === String(selectedId));
+  difficultyReady = !!(selected && selected.difficulty_ready);
+  if (!selectedId) {
+    difficultyFilterSelect.disabled = true;
+    setCollectionStatus("Selecione uma coleção para iniciar.");
+    return;
+  }
+  setCollectionStatus("");
+  difficultyFilterSelect.disabled = !difficultyReady;
+  if (!difficultyReady) {
+    difficultyFilterSelect.value = "";
+  }
+  if (difficultyReady && selected) {
+    const easyOpt = difficultyFilterSelect.querySelector('option[value="easy"]');
+    const hardOpt = difficultyFilterSelect.querySelector('option[value="hard"]');
+    if (easyOpt) easyOpt.disabled = selected.easy_count === 0;
+    if (hardOpt) hardOpt.disabled = selected.hard_count === 0;
+  }
+}
+
+async function loadCards({ collectionId, difficulty = "" }) {
+  const params = new URLSearchParams({ collection_id: collectionId });
+  if (difficulty) params.set("difficulty", difficulty);
+  const res = await fetch(`/api/study/cards?${params.toString()}`);
+  const data = await res.json();
+  if (!res.ok) {
+    setStatus(data.error || "Erro ao carregar cards.");
+    cards = [];
+  } else {
+    cards = data;
+  }
   currentIndex = 0;
   showAnswer = false;
   startTime = Date.now();
@@ -206,6 +264,11 @@ async function loadCards() {
   sessionActive = true;
   continueBtn.disabled = true;
   renderCard();
+  if (!cards.length) {
+    sessionActive = false;
+    stopTimer();
+  }
+  return cards.length > 0;
 }
 
 function startTimer() {
@@ -237,6 +300,7 @@ async function saveSession(stats, durationSec) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      collection_id: activeCollectionId,
       duration_sec: durationSec,
       total: cards.length,
       correct: stats.correct,
@@ -246,6 +310,25 @@ async function saveSession(stats, durationSec) {
       details,
     }),
   });
+}
+
+function buildSessionPayload(durationSec) {
+  const stats = computeStats();
+  const details = {
+    easy_cards: cards.filter((c) => (ratings[c.id] || {}).difficulty === "easy").map((c) => c.id),
+    hard_cards: cards.filter((c) => (ratings[c.id] || {}).difficulty === "hard").map((c) => c.id),
+    wrong_cards: cards.filter((c) => (ratings[c.id] || {}).result === "incorrect").map((c) => c.id),
+  };
+  return {
+    collection_id: activeCollectionId,
+    duration_sec: durationSec,
+    total: cards.length,
+    correct: stats.correct,
+    incorrect: stats.incorrect,
+    easy: stats.easy,
+    hard: stats.hard,
+    details,
+  };
 }
 
 function renderSessions(sessions) {
@@ -279,6 +362,22 @@ function renderSessions(sessions) {
       loadSessions();
     });
   });
+}
+
+function finishSession(auto = false) {
+  if (!sessionActive) return;
+  const stats = buildReport();
+  reportEl.classList.remove("hidden");
+  reportEl.scrollIntoView({ behavior: "smooth" });
+  setStatus(auto ? "Tempo finalizado. Sessão concluída." : "Sessão finalizada.");
+  stopTimer();
+  const durationSec = Math.floor((Date.now() - startTime) / 1000);
+  saveSession(stats, durationSec).then(() => {
+    loadSessions();
+    loadCollections();
+  });
+  sessionActive = false;
+  continueBtn.disabled = false;
 }
 
 async function loadSessions() {
@@ -318,31 +417,23 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "4") applyRating("difficulty", "hard");
 });
 
-finishBtn.addEventListener("click", () => {
-  if (!sessionActive) return;
-  const stats = buildReport();
-  reportEl.classList.remove("hidden");
-  reportEl.scrollIntoView({ behavior: "smooth" });
-  setStatus("Sessão finalizada.");
-  stopTimer();
-  const durationSec = Math.floor((Date.now() - startTime) / 1000);
-  saveSession(stats, durationSec).then(loadSessions);
-  sessionActive = false;
-  continueBtn.disabled = false;
-});
+finishBtn.addEventListener("click", () => finishSession(false));
 
 continueBtn.addEventListener("click", () => {
   if (sessionActive) return;
   reportEl.classList.add("hidden");
-  setStatus("Sessão continuada.");
-  startTime = Date.now();
-  sessionActive = true;
-  continueBtn.disabled = true;
-  startTimer();
+  setStatus("Pronto para nova sessão.");
+  studySession.classList.add("hidden");
+  studySetup.classList.remove("hidden");
+  sessionActive = false;
+  stopTimer();
 });
 
 refreshSessionsBtn.addEventListener("click", loadSessions);
-reloadCardsBtn.addEventListener("click", loadCards);
+reloadCardsBtn.addEventListener("click", () => {
+  if (!activeCollectionId) return;
+  loadCards({ collectionId: activeCollectionId, difficulty: activeDifficulty });
+});
 
 themeButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -353,30 +444,113 @@ themeButtons.forEach((btn) => {
 });
 
 async function loadCollections() {
-  const res = await fetch("/api/collections");
+  const res = await fetch("/api/study/collections");
   const collections = await res.json();
+  collectionsData = collections;
   studyCollectionSelect.innerHTML = "";
-  const optAll = document.createElement("option");
-  optAll.value = "";
-  optAll.textContent = "Todas";
-  studyCollectionSelect.appendChild(optAll);
+  const hasCollections = collections.length > 0;
+  let hasCards = false;
+  const optPlaceholder = document.createElement("option");
+  optPlaceholder.value = "";
+  optPlaceholder.textContent = "Selecione uma coleção";
+  studyCollectionSelect.appendChild(optPlaceholder);
   collections.forEach((col) => {
     const opt = document.createElement("option");
     opt.value = col.id;
-    opt.textContent = col.name;
+    opt.textContent = `${col.name} (${col.card_count})`;
+    if (col.card_count > 0) {
+      hasCards = true;
+    }
     studyCollectionSelect.appendChild(opt);
   });
   const saved = localStorage.getItem("active_collection") || "";
   studyCollectionSelect.value = saved;
+  if (!studyCollectionSelect.value || !studyCollectionSelect.selectedOptions[0] || studyCollectionSelect.selectedOptions[0].disabled) {
+    studyCollectionSelect.value = "";
+  }
+  studyLockedEl.classList.toggle("hidden", hasCollections);
+  startSessionBtn.disabled = !hasCollections;
+  applyDifficultyAvailability();
+  if (!hasCollections) {
+    studySession.classList.add("hidden");
+    reportEl.classList.add("hidden");
+  }
 }
 
 studyCollectionSelect.addEventListener("change", () => {
   localStorage.setItem("active_collection", studyCollectionSelect.value);
-  loadCards();
+  applyDifficultyAvailability();
+  studySession.classList.add("hidden");
+  reportEl.classList.add("hidden");
+  studySetup.classList.remove("hidden");
+  sessionActive = false;
+  stopTimer();
+  setSetupStatus("");
+});
+
+startSessionBtn.addEventListener("click", async () => {
+  const collectionId = studyCollectionSelect.value;
+  const selected = collectionsData.find((col) => String(col.id) === String(collectionId));
+  if (!collectionId || !selected) {
+    setSetupStatus("Selecione uma coleção para iniciar.");
+    return;
+  }
+  if (selected.card_count === 0) {
+    setSetupStatus("Esta coleção ainda não possui cards.");
+    return;
+  }
+  if (difficultyReady) {
+    const chosen = difficultyFilterSelect.value;
+    if (chosen === "easy" && selected.easy_count === 0) {
+      setSetupStatus("Não há cards fáceis nesta coleção.");
+      return;
+    }
+    if (chosen === "hard" && selected.hard_count === 0) {
+      setSetupStatus("Não há cards difíceis nesta coleção.");
+      return;
+    }
+  }
+  setSetupStatus("");
+  studyLockedEl.classList.add("hidden");
+  activeCollectionId = collectionId;
+  activeDifficulty = difficultyReady ? difficultyFilterSelect.value : "";
+  sessionMaxSec = Math.max(0, Number(sessionTimeInput.value || 0)) * 60;
+  reportEl.classList.add("hidden");
+  studySetup.classList.add("hidden");
+  studySession.classList.remove("hidden");
+  const hasCards = await loadCards({ collectionId: activeCollectionId, difficulty: activeDifficulty });
+  if (hasCards) {
+    startTimer();
+  } else {
+    setSetupStatus("Nenhum card encontrado com esse filtro.");
+  }
+});
+
+difficultyFilterSelect.addEventListener("change", () => {
+  if (!difficultyReady) return;
+  activeDifficulty = difficultyFilterSelect.value;
+  setSetupStatus("");
+  const selected = collectionsData.find((col) => String(col.id) === String(studyCollectionSelect.value));
+  if (!selected) return;
+  if (activeDifficulty === "easy" && selected.easy_count === 0) {
+    setSetupStatus("Não há cards fáceis nesta coleção.");
+  }
+  if (activeDifficulty === "hard" && selected.hard_count === 0) {
+    setSetupStatus("Não há cards difíceis nesta coleção.");
+  }
+});
+
+window.addEventListener("pagehide", () => {
+  if (!sessionActive || !cards.length) return;
+  const durationSec = Math.floor((Date.now() - startTime) / 1000);
+  const payload = buildSessionPayload(durationSec);
+  navigator.sendBeacon(
+    "/api/study/sessions",
+    new Blob([JSON.stringify(payload)], { type: "application/json" })
+  );
+  sessionActive = false;
 });
 
 loadTheme();
 loadCollections();
-loadCards();
-startTimer();
 loadSessions();
