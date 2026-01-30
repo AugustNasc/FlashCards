@@ -27,6 +27,13 @@
         <input id="api-key" type="password" placeholder="Cole sua chave aqui" />
         <p class="muted">A chave fica salva no seu navegador.</p>
       </div>
+      <div class="field">
+        <label class="toggle-line" for="sound-toggle">
+          <input id="sound-toggle" type="checkbox" />
+          Sons do app
+        </label>
+        <p class="muted">Ative para ouvir feedback sonoro nos botões.</p>
+      </div>
       <button id="save-settings">Salvar configurações</button>
       <p id="settings-status" class="status"></p>
     </div>
@@ -50,27 +57,27 @@
         <div class="stat meta-goals-row">
           <span>Metas de estudo</span>
           <div class="help-anchor">
-            <button class="ghost" id="open-goals">Definir metas</button>
+        <button class="ghost" id="open-goals" data-sound="goal">Definir metas</button>
             <div id="goals-panel" class="help-panel hidden" role="note" aria-live="polite">
               <strong>Metas por dias</strong>
               <p>Escolha os dias em que deseja estudar esta coleção.</p>
               <div class="goal-controls" id="goal-controls">
-                <button class="ghost goal-day" data-day="1">Seg</button>
-                <button class="ghost goal-day" data-day="2">Ter</button>
-                <button class="ghost goal-day" data-day="3">Qua</button>
-                <button class="ghost goal-day" data-day="4">Qui</button>
-                <button class="ghost goal-day" data-day="5">Sex</button>
-                <button class="ghost goal-day" data-day="6">Sáb</button>
-                <button class="ghost goal-day" data-day="0">Dom</button>
+                <button class="ghost goal-day" data-day="1" data-sound="goal">Seg</button>
+                <button class="ghost goal-day" data-day="2" data-sound="goal">Ter</button>
+                <button class="ghost goal-day" data-day="3" data-sound="goal">Qua</button>
+                <button class="ghost goal-day" data-day="4" data-sound="goal">Qui</button>
+                <button class="ghost goal-day" data-day="5" data-sound="goal">Sex</button>
+                <button class="ghost goal-day" data-day="6" data-sound="goal">Sáb</button>
+                <button class="ghost goal-day" data-day="0" data-sound="goal">Dom</button>
               </div>
               <div class="inline goals-actions">
-                <button class="ghost" id="clear-goals">Limpar metas</button>
+                <button class="ghost" id="clear-goals" data-sound="goal">Limpar metas</button>
               </div>
             </div>
           </div>
         </div>
         <p id="goals-status" class="status"></p>
-        <button class="cta-link" id="open-study">Abrir modo estudo</button>
+        <button class="cta-link" id="open-study" data-sound="nav">Abrir modo estudo</button>
       </div>
     </header>
 
@@ -121,7 +128,7 @@
           <label for="count">Quantidade</label>
           <input id="count" type="number" min="1" max="60" value="5" />
         </div>
-        <button id="generate">Gerar cards</button>
+        <button id="generate" data-sound="generate">Gerar cards</button>
         <div class="progress">
           <div id="progress-bar" class="progress-bar"></div>
         </div>
@@ -196,7 +203,7 @@ O que é SQL?,Linguagem para bancos relacionais</code></pre>
         <p id="confirm-message" class="muted"></p>
         <div class="modal-actions">
           <button class="ghost" id="confirm-cancel">Cancelar</button>
-          <button class="accent danger" id="confirm-ok">Confirmar</button>
+          <button class="accent danger" id="confirm-ok" data-sound="important">Confirmar</button>
         </div>
       </div>
     </div>

@@ -20,6 +20,7 @@ const settingsPanel = document.getElementById("settings");
 const saveSettingsBtn = document.getElementById("save-settings");
 const settingsStatus = document.getElementById("settings-status");
 const apiKeyInput = document.getElementById("api-key");
+const soundToggle = document.getElementById("sound-toggle");
 const themeButtons = document.querySelectorAll(".theme-btn");
 const collectionSelect = document.getElementById("collection-select");
 const collectionNameInput = document.getElementById("collection-name");
@@ -52,6 +53,170 @@ const confirmOk = document.getElementById("confirm-ok");
 let progressInterval = null;
 let collectionsCache = [];
 let confirmAction = null;
+let clickAudioCtx = null;
+
+function isSoundEnabled() {
+  return localStorage.getItem("sound_enabled") !== "0";
+}
+
+function scheduleTone({ freq, startTime, duration, volume }) {
+  const osc = clickAudioCtx.createOscillator();
+  const gain = clickAudioCtx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(freq, startTime);
+  gain.gain.setValueAtTime(0.0001, startTime);
+  gain.gain.exponentialRampToValueAtTime(volume, startTime + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+  osc.connect(gain).connect(clickAudioCtx.destination);
+  osc.start(startTime);
+  osc.stop(startTime + duration + 0.02);
+}
+
+function playClickSound() {
+  try {
+    if (!isSoundEnabled()) return;
+    if (!clickAudioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      clickAudioCtx = new AudioContext();
+    }
+    if (clickAudioCtx.state === "suspended") {
+      clickAudioCtx.resume();
+    }
+    scheduleTone({
+      freq: 520,
+      startTime: clickAudioCtx.currentTime,
+      duration: 0.09,
+      volume: 0.06,
+    });
+  } catch (err) {
+    // Fail silently for older/locked browsers.
+  }
+}
+
+function playImportantSound() {
+  try {
+    if (!isSoundEnabled()) return;
+    if (!clickAudioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      clickAudioCtx = new AudioContext();
+    }
+    if (clickAudioCtx.state === "suspended") {
+      clickAudioCtx.resume();
+    }
+    const now = clickAudioCtx.currentTime;
+    scheduleTone({ freq: 480, startTime: now, duration: 0.08, volume: 0.07 });
+    scheduleTone({ freq: 680, startTime: now + 0.1, duration: 0.1, volume: 0.06 });
+  } catch (err) {
+    // Fail silently for older/locked browsers.
+  }
+}
+
+function playCreateSound() {
+  try {
+    if (!isSoundEnabled()) return;
+    if (!clickAudioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      clickAudioCtx = new AudioContext();
+    }
+    if (clickAudioCtx.state === "suspended") {
+      clickAudioCtx.resume();
+    }
+    const now = clickAudioCtx.currentTime;
+    scheduleTone({ freq: 520, startTime: now, duration: 0.06, volume: 0.05 });
+    scheduleTone({ freq: 660, startTime: now + 0.07, duration: 0.07, volume: 0.055 });
+    scheduleTone({ freq: 880, startTime: now + 0.15, duration: 0.08, volume: 0.05 });
+  } catch (err) {
+    // Fail silently for older/locked browsers.
+  }
+}
+
+function playGenerateSound() {
+  try {
+    if (!isSoundEnabled()) return;
+    if (!clickAudioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      clickAudioCtx = new AudioContext();
+    }
+    if (clickAudioCtx.state === "suspended") {
+      clickAudioCtx.resume();
+    }
+    const now = clickAudioCtx.currentTime;
+    scheduleTone({ freq: 620, startTime: now, duration: 0.07, volume: 0.05 });
+    scheduleTone({ freq: 740, startTime: now + 0.08, duration: 0.08, volume: 0.045 });
+  } catch (err) {
+    // Fail silently for older/locked browsers.
+  }
+}
+
+function playGoalSound() {
+  try {
+    if (!isSoundEnabled()) return;
+    if (!clickAudioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      clickAudioCtx = new AudioContext();
+    }
+    if (clickAudioCtx.state === "suspended") {
+      clickAudioCtx.resume();
+    }
+    const now = clickAudioCtx.currentTime;
+    scheduleTone({ freq: 420, startTime: now, duration: 0.06, volume: 0.045 });
+    scheduleTone({ freq: 520, startTime: now + 0.07, duration: 0.06, volume: 0.04 });
+  } catch (err) {
+    // Fail silently for older/locked browsers.
+  }
+}
+
+function playNavSound() {
+  try {
+    if (!isSoundEnabled()) return;
+    if (!clickAudioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      clickAudioCtx = new AudioContext();
+    }
+    if (clickAudioCtx.state === "suspended") {
+      clickAudioCtx.resume();
+    }
+    scheduleTone({
+      freq: 560,
+      startTime: clickAudioCtx.currentTime,
+      duration: 0.08,
+      volume: 0.05,
+    });
+  } catch (err) {
+    // Fail silently for older/locked browsers.
+  }
+}
+
+document.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  const button = target.closest("button, .cta-link, .ghost-link");
+  if (!button) return;
+  if (button.hasAttribute("disabled")) return;
+  if (button.dataset.sound === "important") {
+    playImportantSound();
+    return;
+  }
+  if (button.dataset.sound === "generate") {
+    playGenerateSound();
+    return;
+  }
+  if (button.dataset.sound === "goal") {
+    playGoalSound();
+    return;
+  }
+  if (button.dataset.sound === "nav") {
+    playNavSound();
+    return;
+  }
+  playClickSound();
+});
 
 function openConfirm({ title, message, okText = "Confirmar", danger = false, onConfirm }) {
   confirmTitle.textContent = title;
@@ -107,6 +272,9 @@ function nudgeToCollectionWarning() {
 function loadSettings() {
   const savedKey = getApiKey();
   if (savedKey) apiKeyInput.value = savedKey;
+  if (soundToggle) {
+    soundToggle.checked = isSoundEnabled();
+  }
   const savedTheme = localStorage.getItem("theme") || "light";
   setTheme(savedTheme);
 }
@@ -223,6 +391,7 @@ generateBtn.addEventListener("click", async () => {
       throw new Error(data.error || "Erro ao gerar cards");
     }
     setStatus(generateStatus, `Criados ${data.created.length} cards.`);
+    playCreateSound();
     const durationSec = (performance.now() - startedAt) / 1000;
     const rate = durationSec ? (data.created.length / durationSec).toFixed(2) : "0";
     const usage = data.usage || {};
@@ -264,6 +433,7 @@ saveBtn.addEventListener("click", async () => {
       throw new Error(data.error || "Erro ao salvar card");
     }
     setStatus(saveStatus, "Card salvo!");
+    playCreateSound();
     document.getElementById("question").value = "";
     document.getElementById("answer").value = "";
     fetchCards();
@@ -299,6 +469,9 @@ saveSettingsBtn.addEventListener("click", () => {
     localStorage.setItem("openai_api_key", key);
   } else {
     localStorage.removeItem("openai_api_key");
+  }
+  if (soundToggle) {
+    localStorage.setItem("sound_enabled", soundToggle.checked ? "1" : "0");
   }
   setStatus(settingsStatus, "Configurações salvas.");
   setTimeout(() => setStatus(settingsStatus, ""), 2000);
@@ -412,7 +585,10 @@ openStudyBtn.addEventListener("click", async () => {
       nudgeToCollectionWarning();
       return;
     }
-    window.location.href = "/study";
+    playNavSound();
+    setTimeout(() => {
+      window.location.href = "/study";
+    }, 140);
   } catch (err) {
     nudgeToCollectionWarning();
   }
@@ -671,6 +847,7 @@ async function saveGoals() {
 goalButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
     btn.classList.toggle("active");
+    playGoalSound();
     saveGoals();
   });
 });
@@ -687,6 +864,7 @@ clearGoalsBtn.addEventListener("click", async () => {
     }
     setStatus(goalsStatus, "Metas removidas.");
     setTimeout(() => setStatus(goalsStatus, ""), 1500);
+    playGoalSound();
   } catch (err) {
     setStatus(goalsStatus, err.message);
   }

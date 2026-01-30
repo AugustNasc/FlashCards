@@ -22,6 +22,14 @@ const collectionStatusEl = document.getElementById("study-collection-status");
 const difficultyFilterField = document.getElementById("difficulty-filter-field");
 const difficultyFilterSelect = document.getElementById("difficulty-filter");
 const sessionTimeInput = document.getElementById("session-time");
+const sessionTimeToggle = document.getElementById("session-time-toggle");
+const autoAdvanceToggle = document.getElementById("auto-advance-toggle");
+const autoAdvanceIntervalInput = document.getElementById("auto-advance-interval");
+const studyAlert = document.getElementById("study-alert");
+const studyAlertMessage = document.getElementById("study-alert-message");
+const studyAlertOk = document.getElementById("study-alert-ok");
+const studyAlertClose = document.getElementById("study-alert-close");
+const studyBackLink = document.getElementById("study-back");
 
 const themeButtons = document.querySelectorAll(".theme-btn");
 
@@ -40,6 +48,212 @@ let activeDifficulty = "";
 let collectionsData = [];
 const ratings = {};
 let sessionActive = false;
+let autoAdvanceInterval = null;
+let clickAudioCtx = null;
+let timeUpPlayed = false;
+
+function lockStudyScroll() {
+  document.body.classList.add("study-locked");
+}
+
+function unlockStudyScroll() {
+  document.body.classList.remove("study-locked");
+}
+
+function stopAutoAdvance() {
+  if (autoAdvanceInterval) {
+    clearInterval(autoAdvanceInterval);
+    autoAdvanceInterval = null;
+  }
+}
+
+function isSoundEnabled() {
+  return localStorage.getItem("sound_enabled") !== "0";
+}
+
+function scheduleTone({ freq, startTime, duration, volume }) {
+  const osc = clickAudioCtx.createOscillator();
+  const gain = clickAudioCtx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(freq, startTime);
+  gain.gain.setValueAtTime(0.0001, startTime);
+  gain.gain.exponentialRampToValueAtTime(volume, startTime + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+  osc.connect(gain).connect(clickAudioCtx.destination);
+  osc.start(startTime);
+  osc.stop(startTime + duration + 0.02);
+}
+
+function playClickSound() {
+  try {
+    if (!isSoundEnabled()) return;
+    if (!clickAudioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      clickAudioCtx = new AudioContext();
+    }
+    if (clickAudioCtx.state === "suspended") {
+      clickAudioCtx.resume();
+    }
+    scheduleTone({
+      freq: 520,
+      startTime: clickAudioCtx.currentTime,
+      duration: 0.09,
+      volume: 0.06,
+    });
+  } catch (err) {
+    // Fail silently for older/locked browsers.
+  }
+}
+
+function playImportantSound() {
+  try {
+    if (!isSoundEnabled()) return;
+    if (!clickAudioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      clickAudioCtx = new AudioContext();
+    }
+    if (clickAudioCtx.state === "suspended") {
+      clickAudioCtx.resume();
+    }
+    const now = clickAudioCtx.currentTime;
+    scheduleTone({ freq: 480, startTime: now, duration: 0.08, volume: 0.07 });
+    scheduleTone({ freq: 680, startTime: now + 0.1, duration: 0.1, volume: 0.06 });
+  } catch (err) {
+    // Fail silently for older/locked browsers.
+  }
+}
+
+function playDeleteSound() {
+  try {
+    if (!isSoundEnabled()) return;
+    if (!clickAudioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      clickAudioCtx = new AudioContext();
+    }
+    if (clickAudioCtx.state === "suspended") {
+      clickAudioCtx.resume();
+    }
+    const now = clickAudioCtx.currentTime;
+    scheduleTone({ freq: 380, startTime: now, duration: 0.08, volume: 0.055 });
+    scheduleTone({ freq: 300, startTime: now + 0.1, duration: 0.1, volume: 0.05 });
+  } catch (err) {
+    // Fail silently for older/locked browsers.
+  }
+}
+
+function playNavSound() {
+  try {
+    if (!isSoundEnabled()) return;
+    if (!clickAudioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      clickAudioCtx = new AudioContext();
+    }
+    if (clickAudioCtx.state === "suspended") {
+      clickAudioCtx.resume();
+    }
+    scheduleTone({
+      freq: 560,
+      startTime: clickAudioCtx.currentTime,
+      duration: 0.08,
+      volume: 0.05,
+    });
+  } catch (err) {
+    // Fail silently for older/locked browsers.
+  }
+}
+
+function playRandomSound() {
+  try {
+    if (!isSoundEnabled()) return;
+    if (!clickAudioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      clickAudioCtx = new AudioContext();
+    }
+    if (clickAudioCtx.state === "suspended") {
+      clickAudioCtx.resume();
+    }
+    const now = clickAudioCtx.currentTime;
+    scheduleTone({ freq: 520, startTime: now, duration: 0.06, volume: 0.045 });
+    scheduleTone({ freq: 680, startTime: now + 0.07, duration: 0.08, volume: 0.05 });
+    scheduleTone({ freq: 600, startTime: now + 0.16, duration: 0.08, volume: 0.045 });
+  } catch (err) {
+    // Fail silently for older/locked browsers.
+  }
+}
+
+function playTimeUpSound() {
+  try {
+    if (!isSoundEnabled()) return;
+    if (!clickAudioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      clickAudioCtx = new AudioContext();
+    }
+    if (clickAudioCtx.state === "suspended") {
+      clickAudioCtx.resume();
+    }
+    const now = clickAudioCtx.currentTime;
+    scheduleTone({ freq: 740, startTime: now, duration: 0.12, volume: 0.06 });
+    scheduleTone({ freq: 560, startTime: now + 0.14, duration: 0.14, volume: 0.05 });
+    scheduleTone({ freq: 420, startTime: now + 0.3, duration: 0.16, volume: 0.045 });
+  } catch (err) {
+    // Fail silently for older/locked browsers.
+  }
+}
+
+document.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  const button = target.closest("button, .cta-link, .ghost-link");
+  if (!button) return;
+  if (button.hasAttribute("disabled")) return;
+  if (button.dataset.sound === "important") {
+    playImportantSound();
+    return;
+  }
+  if (button.dataset.sound === "delete") {
+    playDeleteSound();
+    return;
+  }
+  if (button.dataset.sound === "nav") {
+    playNavSound();
+    return;
+  }
+  if (button.dataset.sound === "random") {
+    playRandomSound();
+    return;
+  }
+  playClickSound();
+});
+
+function openStudyAlert(message) {
+  studyAlertMessage.textContent = message;
+  studyAlert.classList.remove("hidden");
+}
+
+function closeStudyAlert() {
+  studyAlert.classList.add("hidden");
+}
+
+function startAutoAdvance() {
+  stopAutoAdvance();
+  if (!autoAdvanceToggle.checked) return;
+  const seconds = Math.max(2, Number(autoAdvanceIntervalInput.value || 0));
+  if (!seconds || !Number.isFinite(seconds)) return;
+  autoAdvanceInterval = setInterval(() => {
+    if (!sessionActive || !cards.length) return;
+    if (currentIndex >= cards.length - 1) {
+      stopAutoAdvance();
+      return;
+    }
+    goTo(currentIndex + 1);
+  }, seconds * 1000);
+}
 
 function loadTheme() {
   const theme = localStorage.getItem("theme") || "light";
@@ -61,6 +275,10 @@ function updateTimer() {
   const secs = String(seconds % 60).padStart(2, "0");
   timerEl.textContent = `${minutes}:${secs}`;
   if (sessionMaxSec > 0 && seconds >= sessionMaxSec) {
+    if (!timeUpPlayed) {
+      playTimeUpSound();
+      timeUpPlayed = true;
+    }
     finishSession(true);
   }
 }
@@ -130,6 +348,19 @@ function goTo(index) {
   currentIndex = Math.max(0, Math.min(index, cards.length - 1));
   showAnswer = false;
   renderCard();
+}
+
+function goToRandomCard() {
+  if (!cards.length) return;
+  if (cards.length === 1) {
+    goTo(0);
+    return;
+  }
+  let nextIndex = currentIndex;
+  while (nextIndex === currentIndex) {
+    nextIndex = Math.floor(Math.random() * cards.length);
+  }
+  goTo(nextIndex);
 }
 
 function applyRating(type, value) {
@@ -262,7 +493,8 @@ async function loadCards({ collectionId, difficulty = "" }) {
   startTime = Date.now();
   Object.keys(ratings).forEach((key) => delete ratings[key]);
   sessionActive = true;
-  continueBtn.disabled = true;
+  timeUpPlayed = false;
+  continueBtn.disabled = false;
   renderCard();
   if (!cards.length) {
     sessionActive = false;
@@ -350,7 +582,7 @@ function renderSessions(sessions) {
         <span>❌ ${session.incorrect}</span>
         <span>😌 ${session.easy}</span>
         <span>🔥 ${session.hard}</span>
-        <button class="ghost small delete-session" data-id="${session.id}">Excluir</button>
+        <button class="ghost small delete-session" data-id="${session.id}" data-sound="delete">Excluir</button>
       </div>
     `;
     sessionsList.appendChild(item);
@@ -358,8 +590,14 @@ function renderSessions(sessions) {
 
   sessionsList.querySelectorAll(".delete-session").forEach((btn) => {
     btn.addEventListener("click", async () => {
+      const item = btn.closest(".session-item");
+      if (item) {
+        item.classList.add("is-removing");
+        btn.disabled = true;
+      }
+      playDeleteSound();
       await fetch(`/api/study/sessions/${btn.dataset.id}`, { method: "DELETE" });
-      loadSessions();
+      setTimeout(loadSessions, 360);
     });
   });
 }
@@ -371,6 +609,8 @@ function finishSession(auto = false) {
   reportEl.scrollIntoView({ behavior: "smooth" });
   setStatus(auto ? "Tempo finalizado. Sessão concluída." : "Sessão finalizada.");
   stopTimer();
+  stopAutoAdvance();
+  unlockStudyScroll();
   const durationSec = Math.floor((Date.now() - startTime) / 1000);
   saveSession(stats, durationSec).then(() => {
     loadSessions();
@@ -420,19 +660,44 @@ document.addEventListener("keydown", (event) => {
 finishBtn.addEventListener("click", () => finishSession(false));
 
 continueBtn.addEventListener("click", () => {
-  if (sessionActive) return;
+  if (sessionActive) {
+    openStudyAlert("Finalize a sessão atual antes de começar uma nova.");
+    return;
+  }
   reportEl.classList.add("hidden");
   setStatus("Pronto para nova sessão.");
   studySession.classList.add("hidden");
   studySetup.classList.remove("hidden");
   sessionActive = false;
   stopTimer();
+  stopAutoAdvance();
+  unlockStudyScroll();
+});
+
+if (studyBackLink) {
+  studyBackLink.addEventListener("click", (event) => {
+    event.preventDefault();
+    playNavSound();
+    setTimeout(() => {
+      window.location.href = studyBackLink.getAttribute("href");
+    }, 140);
+  });
+}
+
+studyAlertOk.addEventListener("click", closeStudyAlert);
+studyAlertClose.addEventListener("click", closeStudyAlert);
+studyAlert.addEventListener("click", (event) => {
+  if (event.target === studyAlert) closeStudyAlert();
 });
 
 refreshSessionsBtn.addEventListener("click", loadSessions);
 reloadCardsBtn.addEventListener("click", () => {
   if (!activeCollectionId) return;
-  loadCards({ collectionId: activeCollectionId, difficulty: activeDifficulty });
+  if (!cards.length) {
+    loadCards({ collectionId: activeCollectionId, difficulty: activeDifficulty });
+    return;
+  }
+  goToRandomCard();
 });
 
 themeButtons.forEach((btn) => {
@@ -485,6 +750,8 @@ studyCollectionSelect.addEventListener("change", () => {
   studySetup.classList.remove("hidden");
   sessionActive = false;
   stopTimer();
+  stopAutoAdvance();
+  unlockStudyScroll();
   setSetupStatus("");
 });
 
@@ -514,15 +781,26 @@ startSessionBtn.addEventListener("click", async () => {
   studyLockedEl.classList.add("hidden");
   activeCollectionId = collectionId;
   activeDifficulty = difficultyReady ? difficultyFilterSelect.value : "";
-  sessionMaxSec = Math.max(0, Number(sessionTimeInput.value || 0)) * 60;
+  sessionMaxSec = sessionTimeToggle.checked ? Math.max(1, Number(sessionTimeInput.value || 0)) * 60 : 0;
   reportEl.classList.add("hidden");
   studySetup.classList.add("hidden");
   studySession.classList.remove("hidden");
+  studySession.classList.add("session-enter");
+  studySession.addEventListener(
+    "animationend",
+    () => {
+      studySession.classList.remove("session-enter");
+    },
+    { once: true }
+  );
   const hasCards = await loadCards({ collectionId: activeCollectionId, difficulty: activeDifficulty });
   if (hasCards) {
     startTimer();
+    startAutoAdvance();
+    lockStudyScroll();
   } else {
     setSetupStatus("Nenhum card encontrado com esse filtro.");
+    unlockStudyScroll();
   }
 });
 
@@ -549,6 +827,26 @@ window.addEventListener("pagehide", () => {
     new Blob([JSON.stringify(payload)], { type: "application/json" })
   );
   sessionActive = false;
+  stopAutoAdvance();
+});
+
+autoAdvanceIntervalInput.disabled = !autoAdvanceToggle.checked;
+autoAdvanceToggle.addEventListener("change", () => {
+  autoAdvanceIntervalInput.disabled = !autoAdvanceToggle.checked;
+  if (sessionActive) {
+    startAutoAdvance();
+  }
+});
+
+autoAdvanceIntervalInput.addEventListener("change", () => {
+  if (sessionActive && autoAdvanceToggle.checked) {
+    startAutoAdvance();
+  }
+});
+
+sessionTimeInput.disabled = !sessionTimeToggle.checked;
+sessionTimeToggle.addEventListener("change", () => {
+  sessionTimeInput.disabled = !sessionTimeToggle.checked;
 });
 
 loadTheme();

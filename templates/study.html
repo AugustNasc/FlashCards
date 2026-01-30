@@ -15,7 +15,7 @@
         <button class="ghost theme-btn" data-theme="sand">Sand</button>
         <button class="ghost theme-btn" data-theme="mint">Mint</button>
       </div>
-      <a class="ghost-link" href="/">Voltar</a>
+      <a class="ghost-link" id="study-back" data-sound="nav" href="/">Voltar</a>
     </div>
     <header class="study-header">
       <div>
@@ -60,8 +60,26 @@
         </div>
         <div class="field">
           <label for="session-time">Tempo de sessão (minutos)</label>
-          <input id="session-time" type="number" min="0" max="240" value="0" />
-          <p class="muted">Use 0 para sem limite.</p>
+          <label class="toggle-line" for="session-time-toggle">
+            <input id="session-time-toggle" type="checkbox" />
+            Ativar limite de tempo
+          </label>
+          <div class="inline">
+            <input id="session-time" type="number" min="1" max="240" value="10" />
+            <span class="muted">minutos por sessão</span>
+          </div>
+          <p class="muted">Ative para encerrar automaticamente quando o tempo acabar.</p>
+        </div>
+        <div class="field">
+          <label class="toggle-line" for="auto-advance-toggle">
+            <input id="auto-advance-toggle" type="checkbox" />
+            Passar cards automaticamente
+          </label>
+          <div class="inline">
+            <input id="auto-advance-interval" type="number" min="2" max="120" value="10" />
+            <span class="muted">segundos por card</span>
+          </div>
+          <p class="muted">Ative para avançar sozinho enquanto a sessão estiver rodando.</p>
         </div>
         <button id="start-session">Iniciar sessão</button>
         <p id="setup-status" class="status"></p>
@@ -76,13 +94,10 @@
         <div class="study-controls">
           <button id="toggle-answer">Mostrar resposta</button>
           <div class="study-nav">
-            <button class="ghost" id="prev">Anterior</button>
-            <button class="ghost" id="next">Próximo</button>
+            <button class="ghost nav-btn" id="prev" data-sound="nav">◀ Anterior</button>
+            <button class="ghost random-btn" id="reload-cards" data-sound="random">↻ Aleatório</button>
+            <button class="ghost nav-btn" id="next" data-sound="nav">Próximo ▶</button>
           </div>
-        </div>
-
-        <div class="study-actions-row">
-          <button class="ghost" id="reload-cards">Recarregar cards</button>
         </div>
 
         <div class="study-rating">
@@ -103,7 +118,7 @@
         </div>
 
         <div class="study-footer">
-          <button id="finish" class="accent">Finalizar sessão</button>
+          <button id="finish" class="accent" data-sound="important">Finalizar sessão</button>
           <button id="continue" class="ghost">Começar nova Sessão</button>
           <p id="study-status" class="status"></p>
         </div>
@@ -156,6 +171,19 @@
         <div id="sessions-list" class="sessions-list"></div>
       </section>
     </main>
+
+    <div id="study-alert" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="study-alert-title">
+      <div class="modal-card">
+        <div class="modal-header">
+          <strong id="study-alert-title">Atenção</strong>
+          <button class="ghost icon-btn" id="study-alert-close" aria-label="Fechar aviso">✕</button>
+        </div>
+        <p id="study-alert-message" class="muted"></p>
+        <div class="modal-actions">
+          <button class="accent" id="study-alert-ok">Entendi</button>
+        </div>
+      </div>
+    </div>
 
     <script src="/static/study.js"></script>
   </body>
