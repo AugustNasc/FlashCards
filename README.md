@@ -33,6 +33,8 @@ Construído com **Flask + SQLite**, funciona **sem login**, é simples de rodar 
 
 ## 🆕 Updates e melhorias
 
+As mudanças detalhadas estão em `CHANGELOG.md`.
+
 - 🎯 **Metas de estudo por coleção** com seleção de dias da semana
 - ✅ **Modo estudo com setup** (coleção, tempo máximo e filtro por dificuldade quando disponível)
 - 🧭 **Acesso ao estudo bloqueado** sem coleção criada
