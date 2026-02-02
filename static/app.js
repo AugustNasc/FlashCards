@@ -13,6 +13,7 @@ const toggleCardsBtn = document.getElementById("toggle-cards");
 const collapseCardsBtn = document.getElementById("collapse-cards");
 const cardsWrapper = document.getElementById("cards-wrapper");
 const openStudyBtn = document.getElementById("open-study");
+const studyFocusEl = document.getElementById("study-focus");
 
 const openSettingsBtn = document.getElementById("open-settings");
 const closeSettingsBtn = document.getElementById("close-settings");
@@ -21,11 +22,13 @@ const saveSettingsBtn = document.getElementById("save-settings");
 const settingsStatus = document.getElementById("settings-status");
 const apiKeyInput = document.getElementById("api-key");
 const soundToggle = document.getElementById("sound-toggle");
+const bgSoundToggle = document.getElementById("bg-sound-toggle");
 const themeButtons = document.querySelectorAll(".theme-btn");
 const collectionSelect = document.getElementById("collection-select");
 const collectionNameInput = document.getElementById("collection-name");
 const createCollectionBtn = document.getElementById("create-collection");
 const collectionStatus = document.getElementById("collection-status");
+const collectionCompletions = document.getElementById("collection-completions");
 const deleteCollectionBtn = document.getElementById("delete-collection");
 const importFileInput = document.getElementById("import-file");
 const importCardsBtn = document.getElementById("import-cards");
@@ -34,11 +37,15 @@ const importHelpBtn = document.getElementById("import-help");
 const importHelpPanel = document.getElementById("import-help-panel");
 const openImportBtn = document.getElementById("open-import");
 const importPanel = document.getElementById("import-panel");
-const goalButtons = Array.from(document.querySelectorAll(".goal-day"));
-const clearGoalsBtn = document.getElementById("clear-goals");
 const goalsStatus = document.getElementById("goals-status");
 const openGoalsBtn = document.getElementById("open-goals");
 const goalsPanel = document.getElementById("goals-panel");
+const goalLogSessions = document.getElementById("goal-log-sessions");
+const goalLogCards = document.getElementById("goal-log-cards");
+const goalLogTime = document.getElementById("goal-log-time");
+const bgSoundVolume = document.getElementById("bg-sound-volume");
+const studySoundToggle = document.getElementById("study-sound-toggle");
+const studySoundVolume = document.getElementById("study-sound-volume");
 const migrateSelect = document.getElementById("migrate-select");
 const migrateCardsBtn = document.getElementById("migrate-cards");
 const migrateStatus = document.getElementById("migrate-status");
@@ -54,9 +61,17 @@ let progressInterval = null;
 let collectionsCache = [];
 let confirmAction = null;
 let clickAudioCtx = null;
+const bgAudio = new Audio("/static/audio/background.mp3");
+bgAudio.loop = true;
+bgAudio.preload = "none";
+let bgPlayPending = false;
 
 function isSoundEnabled() {
   return localStorage.getItem("sound_enabled") !== "0";
+}
+
+function isBackgroundEnabled() {
+  return isSoundEnabled() && localStorage.getItem("bg_sound_enabled") !== "0";
 }
 
 function scheduleTone({ freq, startTime, duration, volume }) {
@@ -70,6 +85,57 @@ function scheduleTone({ freq, startTime, duration, volume }) {
   osc.connect(gain).connect(clickAudioCtx.destination);
   osc.start(startTime);
   osc.stop(startTime + duration + 0.02);
+}
+
+function getBackgroundVolume() {
+  const stored = Number(localStorage.getItem("bg_sound_volume"));
+  const value = Number.isFinite(stored) ? stored : 35;
+  return Math.min(100, Math.max(0, value));
+}
+
+function applyBackgroundVolume() {
+  bgAudio.volume = getBackgroundVolume() / 100;
+}
+
+function startBackgroundAudio() {
+  if (!isBackgroundEnabled()) return;
+  applyBackgroundVolume();
+  const playPromise = bgAudio.play();
+  if (playPromise && typeof playPromise.then === "function") {
+    playPromise
+      .then(() => {
+        bgPlayPending = false;
+      })
+      .catch(() => {
+        // Autoplay blocked; keep pending to retry on next gesture.
+      });
+  }
+}
+
+function stopBackgroundAudio() {
+  bgAudio.pause();
+}
+
+function syncBackgroundAudio({ immediate = false } = {}) {
+  if (!isBackgroundEnabled()) {
+    bgPlayPending = false;
+    stopBackgroundAudio();
+    return;
+  }
+  bgPlayPending = true;
+  applyBackgroundVolume();
+  if (immediate) {
+    maybeStartBackgroundAudio();
+  }
+}
+
+function maybeStartBackgroundAudio() {
+  if (!bgPlayPending) return;
+  if (!isBackgroundEnabled()) {
+    bgPlayPending = false;
+    return;
+  }
+  startBackgroundAudio();
 }
 
 function playClickSound() {
@@ -199,6 +265,7 @@ document.addEventListener("click", (event) => {
   const button = target.closest("button, .cta-link, .ghost-link");
   if (!button) return;
   if (button.hasAttribute("disabled")) return;
+  maybeStartBackgroundAudio();
   if (button.dataset.sound === "important") {
     playImportantSound();
     return;
@@ -218,6 +285,16 @@ document.addEventListener("click", (event) => {
   playClickSound();
 });
 
+window.addEventListener("pagehide", () => {
+  stopBackgroundAudio();
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    stopBackgroundAudio();
+  }
+});
+
 function openConfirm({ title, message, okText = "Confirmar", danger = false, onConfirm }) {
   confirmTitle.textContent = title;
   confirmMessage.textContent = message;
@@ -234,7 +311,7 @@ function closeConfirm() {
 }
 
 function getApiKey() {
-  return localStorage.getItem("openai_api_key") || "";
+  return localStorage.getItem("ai_api_key") || localStorage.getItem("openai_api_key") || "";
 }
 
 function getActiveCollection() {
@@ -257,6 +334,50 @@ function setCardActionsEnabled(enabled) {
   collectionWarning.classList.toggle("hidden", enabled);
 }
 
+async function loadStudyFocus({ silent = false } = {}) {
+  if (!studyFocusEl) return;
+  const params = new URLSearchParams();
+  const collectionId = getActiveCollection();
+  if (collectionId) {
+    params.set("collection_id", collectionId);
+  }
+  try {
+    const res = await fetch(`/api/study/summary?${params.toString()}`);
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || "Erro ao carregar foco.");
+    }
+    if (!data.sessions) {
+      studyFocusEl.textContent = "Sem sessões recentes";
+    } else if (typeof data.score === "number" && data.score > 0) {
+      studyFocusEl.textContent = `${data.label} · ${data.score}%`;
+    } else {
+      studyFocusEl.textContent = data.label || "Sem dados";
+    }
+    studyFocusEl.title = "Indicador baseado nas sessões dos últimos 7 dias.";
+  } catch (err) {
+    if (!silent) {
+      studyFocusEl.textContent = "Sem dados";
+    }
+  }
+}
+
+function updateCollectionCompletions() {
+  if (!collectionCompletions) return;
+  const collectionId = collectionSelect.value;
+  if (!collectionId) {
+    collectionCompletions.textContent = "";
+    return;
+  }
+  const selected = collectionsCache.find((col) => String(col.id) === String(collectionId));
+  if (!selected) {
+    collectionCompletions.textContent = "";
+    return;
+  }
+  const count = Number(selected.completion_count || 0);
+  collectionCompletions.textContent = `Coleção concluída ${count} ${count === 1 ? "vez" : "vezes"}.`;
+}
+
 function nudgeToCollectionWarning() {
   collectionWarning.classList.remove("hidden");
   collectionWarning.classList.remove("shake");
@@ -269,14 +390,48 @@ function nudgeToCollectionWarning() {
   });
 }
 
+function applySoundSettingsUI() {
+  const generalEnabled = soundToggle ? soundToggle.checked : true;
+  if (bgSoundToggle) {
+    bgSoundToggle.disabled = !generalEnabled;
+  }
+  if (studySoundToggle) {
+    studySoundToggle.disabled = !generalEnabled;
+  }
+  if (bgSoundVolume) {
+    bgSoundVolume.disabled = !generalEnabled || (bgSoundToggle && !bgSoundToggle.checked);
+  }
+  if (studySoundVolume) {
+    studySoundVolume.disabled = !generalEnabled || (studySoundToggle && !studySoundToggle.checked);
+  }
+}
+
 function loadSettings() {
   const savedKey = getApiKey();
   if (savedKey) apiKeyInput.value = savedKey;
   if (soundToggle) {
     soundToggle.checked = isSoundEnabled();
   }
+  if (bgSoundToggle) {
+    bgSoundToggle.checked = localStorage.getItem("bg_sound_enabled") !== "0";
+    bgSoundToggle.disabled = !(soundToggle && soundToggle.checked);
+  }
+  if (studySoundToggle) {
+    studySoundToggle.checked = localStorage.getItem("study_sound_enabled") !== "0";
+    studySoundToggle.disabled = !(soundToggle && soundToggle.checked);
+  }
+  if (bgSoundVolume) {
+    const stored = Number(localStorage.getItem("bg_sound_volume"));
+    bgSoundVolume.value = Number.isFinite(stored) ? String(stored) : "35";
+  }
+  if (studySoundVolume) {
+    const stored = Number(localStorage.getItem("study_sound_volume"));
+    studySoundVolume.value = Number.isFinite(stored) ? String(stored) : "40";
+  }
   const savedTheme = localStorage.getItem("theme") || "light";
   setTheme(savedTheme);
+  applySoundSettingsUI();
+  syncBackgroundAudio();
 }
 
 function setStatus(el, text) {
@@ -382,7 +537,7 @@ generateBtn.addEventListener("click", async () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-OpenAI-Key": getApiKey(),
+        "X-API-Key": getApiKey(),
       },
       body: JSON.stringify({ topic, count, collection_id: collectionId || null }),
     });
@@ -466,16 +621,50 @@ closeSettingsBtn.addEventListener("click", () => {
 saveSettingsBtn.addEventListener("click", () => {
   const key = apiKeyInput.value.trim();
   if (key) {
-    localStorage.setItem("openai_api_key", key);
+    localStorage.setItem("ai_api_key", key);
+    localStorage.removeItem("openai_api_key");
   } else {
+    localStorage.removeItem("ai_api_key");
     localStorage.removeItem("openai_api_key");
   }
   if (soundToggle) {
     localStorage.setItem("sound_enabled", soundToggle.checked ? "1" : "0");
   }
+  if (bgSoundToggle) {
+    localStorage.setItem("bg_sound_enabled", bgSoundToggle.checked ? "1" : "0");
+  }
+  if (studySoundToggle) {
+    localStorage.setItem("study_sound_enabled", studySoundToggle.checked ? "1" : "0");
+  }
+  if (bgSoundVolume) {
+    localStorage.setItem("bg_sound_volume", bgSoundVolume.value || "35");
+  }
+  if (studySoundVolume) {
+    localStorage.setItem("study_sound_volume", studySoundVolume.value || "40");
+  }
+  applySoundSettingsUI();
+  syncBackgroundAudio({ immediate: true });
   setStatus(settingsStatus, "Configurações salvas.");
   setTimeout(() => setStatus(settingsStatus, ""), 2000);
 });
+
+if (soundToggle) {
+  soundToggle.addEventListener("change", () => {
+    applySoundSettingsUI();
+  });
+}
+
+if (bgSoundToggle) {
+  bgSoundToggle.addEventListener("change", () => {
+    applySoundSettingsUI();
+  });
+}
+
+if (studySoundToggle) {
+  studySoundToggle.addEventListener("change", () => {
+    applySoundSettingsUI();
+  });
+}
 
 themeButtons.forEach((btn) => {
   btn.addEventListener("click", () => setTheme(btn.dataset.theme));
@@ -516,7 +705,9 @@ async function loadCollections() {
   setCardActionsEnabled(!!collectionSelect.value);
   openStudyBtn.disabled = collectionsCache.length === 0;
   renderMigrateOptions();
-  await loadGoals();
+  updateCollectionCompletions();
+  await loadLogs({ silent: true });
+  await loadStudyFocus({ silent: true });
 }
 
 function renderMigrateOptions() {
@@ -599,8 +790,10 @@ collectionSelect.addEventListener("change", () => {
   deleteCollectionBtn.disabled = !collectionSelect.value;
   setCardActionsEnabled(!!collectionSelect.value);
   renderMigrateOptions();
+  updateCollectionCompletions();
   fetchCards();
-  loadGoals();
+  loadLogs({ silent: true });
+  loadStudyFocus({ silent: true });
 });
 
 migrateSelect.addEventListener("change", () => {
@@ -749,6 +942,9 @@ importPanel.addEventListener("click", (event) => {
 openGoalsBtn.addEventListener("click", (event) => {
   event.stopPropagation();
   goalsPanel.classList.toggle("hidden");
+  if (!goalsPanel.classList.contains("hidden")) {
+    loadLogs({ silent: true });
+  }
 });
 
 goalsPanel.addEventListener("click", (event) => {
@@ -779,96 +975,56 @@ focusCollectionBtn.addEventListener("click", () => {
   collectionNameInput.focus();
 });
 
-function setGoalsEnabled(enabled) {
-  goalButtons.forEach((btn) => {
-    btn.disabled = !enabled;
-  });
-  clearGoalsBtn.disabled = !enabled;
+function setLogsEnabled(enabled) {
   openGoalsBtn.disabled = !enabled;
 }
 
-function applyGoalDays(days) {
-  const set = new Set(days);
-  goalButtons.forEach((btn) => {
-    btn.classList.toggle("active", set.has(Number(btn.dataset.day)));
-  });
+function formatTotalTime(seconds) {
+  const totalMinutes = seconds > 0 ? Math.ceil(seconds / 60) : 0;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes}m`;
 }
 
-function getSelectedGoalDays() {
-  return goalButtons
-    .filter((btn) => btn.classList.contains("active"))
-    .map((btn) => Number(btn.dataset.day));
+function resetLogs() {
+  if (goalLogSessions) goalLogSessions.textContent = "0";
+  if (goalLogCards) goalLogCards.textContent = "0";
+  if (goalLogTime) goalLogTime.textContent = "0m";
 }
 
-async function loadGoals() {
+async function loadLogs({ silent = false } = {}) {
   const collectionId = getActiveCollection();
   if (!collectionId) {
-    applyGoalDays([]);
-    setGoalsEnabled(false);
-    setStatus(goalsStatus, "Selecione uma coleção para definir metas.");
+    resetLogs();
+    setLogsEnabled(false);
+    if (!silent) {
+      setStatus(goalsStatus, "Selecione uma coleção para ver os logs.");
+    }
     return;
   }
-  setGoalsEnabled(true);
+  setLogsEnabled(true);
   try {
-    const res = await fetch(`/api/goals/${collectionId}`);
+    const res = await fetch(`/api/collections/${collectionId}/logs`);
     const data = await res.json();
     if (!res.ok) {
-      throw new Error(data.error || "Erro ao carregar metas.");
+      throw new Error(data.error || "Erro ao carregar logs.");
     }
-    applyGoalDays(data.days || []);
-    setStatus(goalsStatus, "Metas carregadas.");
-    setTimeout(() => setStatus(goalsStatus, ""), 1500);
+    if (goalLogSessions) goalLogSessions.textContent = String(data.sessions_complete || 0);
+    if (goalLogCards) goalLogCards.textContent = String(data.cards_solved || 0);
+    if (goalLogTime) goalLogTime.textContent = formatTotalTime(Number(data.total_seconds || 0));
+    if (!silent) {
+      setStatus(goalsStatus, "Logs atualizados.");
+      setTimeout(() => setStatus(goalsStatus, ""), 1500);
+    }
   } catch (err) {
-    setStatus(goalsStatus, err.message);
+    if (!silent) {
+      setStatus(goalsStatus, err.message);
+    }
   }
 }
-
-async function saveGoals() {
-  const collectionId = getActiveCollection();
-  if (!collectionId) return;
-  const days = getSelectedGoalDays();
-  try {
-    const res = await fetch(`/api/goals/${collectionId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ days }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || "Erro ao salvar metas.");
-    }
-    setStatus(goalsStatus, "Metas salvas.");
-    setTimeout(() => setStatus(goalsStatus, ""), 1500);
-  } catch (err) {
-    setStatus(goalsStatus, err.message);
-  }
-}
-
-goalButtons.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    btn.classList.toggle("active");
-    playGoalSound();
-    saveGoals();
-  });
-});
-
-clearGoalsBtn.addEventListener("click", async () => {
-  const collectionId = getActiveCollection();
-  if (!collectionId) return;
-  applyGoalDays([]);
-  try {
-    const res = await fetch(`/api/goals/${collectionId}`, { method: "DELETE" });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || "Erro ao limpar metas.");
-    }
-    setStatus(goalsStatus, "Metas removidas.");
-    setTimeout(() => setStatus(goalsStatus, ""), 1500);
-    playGoalSound();
-  } catch (err) {
-    setStatus(goalsStatus, err.message);
-  }
-});
 
 loadSettings();
 loadCollections().then(fetchCards);

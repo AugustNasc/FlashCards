@@ -23,26 +23,48 @@
         <button class="ghost icon-btn" id="close-settings" aria-label="Fechar">✕</button>
       </div>
       <div class="field">
-        <label for="api-key">API Key (OpenAI)</label>
+        <label for="api-key">API Key (OpenAI ou Gemini)</label>
         <input id="api-key" type="password" placeholder="Cole sua chave aqui" />
         <p class="muted">A chave fica salva no seu navegador.</p>
       </div>
       <div class="field">
         <label class="toggle-line" for="sound-toggle">
           <input id="sound-toggle" type="checkbox" />
-          Sons do app
+          Sons do app (geral)
         </label>
         <p class="muted">Ative para ouvir feedback sonoro nos botões.</p>
+      </div>
+      <div class="field">
+        <label class="toggle-line" for="bg-sound-toggle">
+          <input id="bg-sound-toggle" type="checkbox" />
+          Som ambiente
+        </label>
+        <p class="muted">Ative para um fundo sonoro suave durante o uso.</p>
+        <div class="range-line">
+          <span class="muted">Volume</span>
+          <input id="bg-sound-volume" type="range" min="0" max="100" value="35" />
+        </div>
+      </div>
+      <div class="field">
+        <label class="toggle-line" for="study-sound-toggle">
+          <input id="study-sound-toggle" type="checkbox" />
+          Som do modo study
+        </label>
+        <p class="muted">Ative para ouvir o som enquanto estuda.</p>
+        <div class="range-line">
+          <span class="muted">Volume</span>
+          <input id="study-sound-volume" type="range" min="0" max="100" value="40" />
+        </div>
       </div>
       <button id="save-settings">Salvar configurações</button>
       <p id="settings-status" class="status"></p>
     </div>
     <header class="hero">
       <div>
-        <p class="eyebrow">Anki moderno + IA</p>
-        <h1>Flashcards rápidos, limpos e acessíveis no celular.</h1>
+        <p class="eyebrow">FLASHCARD MODERNO + IA</p>
+        <h1>Flashcards simples, rápidos e sempre disponíveis.</h1>
         <p class="subhead">
-          Gere perguntas e respostas em segundos e estude quando quiser.
+          Gere perguntas e respostas em segundos e estude quando quiser, em qualquer dispositivo.
         </p>
       </div>
       <div class="hero-card">
@@ -52,27 +74,30 @@
         </div>
         <div class="stat">
           <span>Foco em estudo</span>
-          <strong>Sem distrações</strong>
+          <strong id="study-focus">Sem dados</strong>
         </div>
         <div class="stat meta-goals-row">
-          <span>Metas de estudo</span>
+          <span>Logs de estudo</span>
           <div class="help-anchor">
-        <button class="ghost" id="open-goals" data-sound="goal">Definir metas</button>
+        <button class="ghost" id="open-goals" data-sound="goal">Ver logs</button>
             <div id="goals-panel" class="help-panel hidden" role="note" aria-live="polite">
-              <strong>Metas por dias</strong>
-              <p>Escolha os dias em que deseja estudar esta coleção.</p>
-              <div class="goal-controls" id="goal-controls">
-                <button class="ghost goal-day" data-day="1" data-sound="goal">Seg</button>
-                <button class="ghost goal-day" data-day="2" data-sound="goal">Ter</button>
-                <button class="ghost goal-day" data-day="3" data-sound="goal">Qua</button>
-                <button class="ghost goal-day" data-day="4" data-sound="goal">Qui</button>
-                <button class="ghost goal-day" data-day="5" data-sound="goal">Sex</button>
-                <button class="ghost goal-day" data-day="6" data-sound="goal">Sáb</button>
-                <button class="ghost goal-day" data-day="0" data-sound="goal">Dom</button>
+              <strong>Resumo da coleção</strong>
+              <p>Confira as sessões completas, cards resolvidos e tempo total.</p>
+              <div class="goal-progress">
+                <div class="goal-progress-item">
+                  <span>Sessões completas</span>
+                  <strong id="goal-log-sessions">0</strong>
+                </div>
+                <div class="goal-progress-item">
+                  <span>Cards resolvidos</span>
+                  <strong id="goal-log-cards">0</strong>
+                </div>
+                <div class="goal-progress-item">
+                  <span>Tempo total</span>
+                  <strong id="goal-log-time">0m</strong>
+                </div>
               </div>
-              <div class="inline goals-actions">
-                <button class="ghost" id="clear-goals" data-sound="goal">Limpar metas</button>
-              </div>
+              <p class="muted">Sessões completas contam apenas quando todos os cards recebem resultado (Acertei ou Errei). Excluir sessões atualiza os números.</p>
             </div>
           </div>
         </div>
@@ -97,6 +122,7 @@
             <div class="inline">
               <button class="ghost danger" id="delete-collection">Excluir coleção</button>
             </div>
+            <p id="collection-completions" class="status"></p>
           </div>
           <div class="field">
             <label for="migrate-select">Migrar cards para</label>
@@ -119,7 +145,7 @@
 
       <section class="panel compact">
         <h2>Gerar com IA</h2>
-        <p class="muted">Defina um tema e a quantidade de cards. A IA responde em JSON e os cards já ficam salvos.</p>
+        <p class="muted">Defina um tema e a quantidade de cards. A IA cria e salva tudo automaticamente.</p>
         <div class="field">
           <label for="topic">Tema</label>
           <input id="topic" type="text" placeholder="Ex.: Anatomia, História do Brasil, JavaScript" />
@@ -194,6 +220,11 @@ O que é SQL?,Linguagem para bancos relacionais</code></pre>
       </section>
 
     </main>
+
+    <footer class="site-footer">
+      <span>© 2026 FlashCards</span>
+      <span class="muted">Sons ambiente e study © 2026 FlashCards. Controle em Configurações.</span>
+    </footer>
 
     <div id="confirm-modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-card">

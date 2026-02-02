@@ -30,6 +30,7 @@ const studyAlertMessage = document.getElementById("study-alert-message");
 const studyAlertOk = document.getElementById("study-alert-ok");
 const studyAlertClose = document.getElementById("study-alert-close");
 const studyBackLink = document.getElementById("study-back");
+const sessionPills = document.querySelectorAll(".session-pill");
 
 const themeButtons = document.querySelectorAll(".theme-btn");
 
@@ -51,13 +52,37 @@ let sessionActive = false;
 let autoAdvanceInterval = null;
 let clickAudioCtx = null;
 let timeUpPlayed = false;
+const studyAudio = new Audio("/static/audio/study.mp3");
+studyAudio.loop = true;
+studyAudio.preload = "none";
+let studyPlayPending = false;
+
+function shouldLockStudyScroll() {
+  return window.matchMedia("(max-width: 980px)").matches;
+}
+
+function focusStudySession() {
+  if (!studySession) return;
+  requestAnimationFrame(() => {
+    const top = studySession.getBoundingClientRect().top + window.scrollY - 16;
+    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+  });
+}
 
 function lockStudyScroll() {
-  document.body.classList.add("study-locked");
+  if (shouldLockStudyScroll()) {
+    document.body.classList.add("study-locked");
+  }
 }
 
 function unlockStudyScroll() {
   document.body.classList.remove("study-locked");
+}
+
+function setSessionPillsVisible(visible) {
+  sessionPills.forEach((pill) => {
+    pill.classList.toggle("hidden", !visible);
+  });
 }
 
 function stopAutoAdvance() {
@@ -71,6 +96,10 @@ function isSoundEnabled() {
   return localStorage.getItem("sound_enabled") !== "0";
 }
 
+function isStudySoundEnabled() {
+  return isSoundEnabled() && localStorage.getItem("study_sound_enabled") !== "0";
+}
+
 function scheduleTone({ freq, startTime, duration, volume }) {
   const osc = clickAudioCtx.createOscillator();
   const gain = clickAudioCtx.createGain();
@@ -82,6 +111,57 @@ function scheduleTone({ freq, startTime, duration, volume }) {
   osc.connect(gain).connect(clickAudioCtx.destination);
   osc.start(startTime);
   osc.stop(startTime + duration + 0.02);
+}
+
+function getStudyVolume() {
+  const stored = Number(localStorage.getItem("study_sound_volume"));
+  const value = Number.isFinite(stored) ? stored : 40;
+  return Math.min(100, Math.max(0, value));
+}
+
+function applyStudyVolume() {
+  studyAudio.volume = getStudyVolume() / 100;
+}
+
+function startStudyAudio() {
+  if (!isStudySoundEnabled()) return;
+  applyStudyVolume();
+  const playPromise = studyAudio.play();
+  if (playPromise && typeof playPromise.then === "function") {
+    playPromise
+      .then(() => {
+        studyPlayPending = false;
+      })
+      .catch(() => {
+        // Autoplay blocked; keep pending to retry on next gesture.
+      });
+  }
+}
+
+function stopStudyAudio() {
+  studyAudio.pause();
+}
+
+function syncStudyAudio({ immediate = false } = {}) {
+  if (!isStudySoundEnabled() || !sessionActive) {
+    studyPlayPending = false;
+    stopStudyAudio();
+    return;
+  }
+  studyPlayPending = true;
+  applyStudyVolume();
+  if (immediate) {
+    maybeStartStudyAudio();
+  }
+}
+
+function maybeStartStudyAudio() {
+  if (!studyPlayPending) return;
+  if (!isStudySoundEnabled() || !sessionActive) {
+    studyPlayPending = false;
+    return;
+  }
+  startStudyAudio();
 }
 
 function playClickSound() {
@@ -212,6 +292,7 @@ document.addEventListener("click", (event) => {
   const button = target.closest("button, .cta-link, .ghost-link");
   if (!button) return;
   if (button.hasAttribute("disabled")) return;
+  maybeStartStudyAudio();
   if (button.dataset.sound === "important") {
     playImportantSound();
     return;
@@ -229,6 +310,14 @@ document.addEventListener("click", (event) => {
     return;
   }
   playClickSound();
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    stopStudyAudio();
+  } else if (sessionActive) {
+    syncStudyAudio();
+  }
 });
 
 function openStudyAlert(message) {
@@ -352,14 +441,22 @@ function goTo(index) {
 
 function goToRandomCard() {
   if (!cards.length) return;
-  if (cards.length === 1) {
-    goTo(0);
+  const availableIndexes = cards
+    .map((card, index) => ({ card, index }))
+    .filter(({ card }) => !(ratings[card.id] && ratings[card.id].result))
+    .map(({ index }) => index);
+
+  if (!availableIndexes.length) {
+    setStatus("Todos os cards já foram respondidos.");
     return;
   }
-  let nextIndex = currentIndex;
-  while (nextIndex === currentIndex) {
-    nextIndex = Math.floor(Math.random() * cards.length);
-  }
+
+  const candidates =
+    availableIndexes.length > 1
+      ? availableIndexes.filter((index) => index !== currentIndex)
+      : availableIndexes;
+  const nextIndex = candidates[Math.floor(Math.random() * candidates.length)];
+  setStatus("");
   goTo(nextIndex);
 }
 
@@ -499,6 +596,7 @@ async function loadCards({ collectionId, difficulty = "" }) {
   if (!cards.length) {
     sessionActive = false;
     stopTimer();
+    stopStudyAudio();
   }
   return cards.length > 0;
 }
@@ -611,6 +709,7 @@ function finishSession(auto = false) {
   stopTimer();
   stopAutoAdvance();
   unlockStudyScroll();
+  stopStudyAudio();
   const durationSec = Math.floor((Date.now() - startTime) / 1000);
   saveSession(stats, durationSec).then(() => {
     loadSessions();
@@ -672,6 +771,8 @@ continueBtn.addEventListener("click", () => {
   stopTimer();
   stopAutoAdvance();
   unlockStudyScroll();
+  setSessionPillsVisible(false);
+  stopStudyAudio();
 });
 
 if (studyBackLink) {
@@ -752,6 +853,8 @@ studyCollectionSelect.addEventListener("change", () => {
   stopTimer();
   stopAutoAdvance();
   unlockStudyScroll();
+  setSessionPillsVisible(false);
+  stopStudyAudio();
   setSetupStatus("");
 });
 
@@ -793,14 +896,19 @@ startSessionBtn.addEventListener("click", async () => {
     },
     { once: true }
   );
+  focusStudySession();
   const hasCards = await loadCards({ collectionId: activeCollectionId, difficulty: activeDifficulty });
   if (hasCards) {
     startTimer();
     startAutoAdvance();
     lockStudyScroll();
+    setSessionPillsVisible(true);
+    syncStudyAudio({ immediate: true });
   } else {
     setSetupStatus("Nenhum card encontrado com esse filtro.");
     unlockStudyScroll();
+    setSessionPillsVisible(false);
+    stopStudyAudio();
   }
 });
 
@@ -828,6 +936,7 @@ window.addEventListener("pagehide", () => {
   );
   sessionActive = false;
   stopAutoAdvance();
+  stopStudyAudio();
 });
 
 autoAdvanceIntervalInput.disabled = !autoAdvanceToggle.checked;
@@ -849,6 +958,15 @@ sessionTimeToggle.addEventListener("change", () => {
   sessionTimeInput.disabled = !sessionTimeToggle.checked;
 });
 
+window.addEventListener("resize", () => {
+  if (!shouldLockStudyScroll()) {
+    unlockStudyScroll();
+  } else if (sessionActive) {
+    lockStudyScroll();
+  }
+});
+
 loadTheme();
+syncStudyAudio();
 loadCollections();
 loadSessions();

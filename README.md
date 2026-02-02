@@ -2,7 +2,7 @@
 
 **FlashCards IA** é um web app leve, moderno e **mobile-first**, criado para **gerar, estudar e gerenciar flashcards com ajuda de IA**.
 
-Construído com **Flask + SQLite**, funciona **sem login**, é simples de rodar localmente e oferece recursos completos de estudo, organização por coleções e integração com a **API da OpenAI**.
+Construído com **Flask + SQLite**, funciona **sem login**, é simples de rodar localmente e oferece recursos completos de estudo, organização por coleções e integração com **OpenAI ou Gemini**.
 
 ---
 
@@ -24,10 +24,12 @@ Construído com **Flask + SQLite**, funciona **sem login**, é simples de rodar 
   - validação automática de `question` e `answer`
 - 🎨 **Temas rápidos**  
   - Light, Dark, Sand, Mint
-- 🎯 **Metas de estudo por coleção**
-  - escolha os dias da semana para estudar cada tema
+- 📊 **Logs de estudo por coleção**
+  - sessões completas, cards resolvidos e tempo total
+- 🧠 **Indicador de foco em estudo** (últimos 7 dias)
 - ⚙️ **Configurações**
-  - API key da OpenAI
+  - API key OpenAI ou Gemini
+  - sons do app (geral, ambiente e study) + volume
 
 ---
 
@@ -35,13 +37,16 @@ Construído com **Flask + SQLite**, funciona **sem login**, é simples de rodar 
 
 As mudanças detalhadas estão em `CHANGELOG.md`.
 
-- 🎯 **Metas de estudo por coleção** com seleção de dias da semana
+- 📊 **Logs de estudo por coleção** (sessões completas, cards resolvidos e tempo total)
+- 🧠 **Indicador de foco em estudo**
 - ✅ **Modo estudo com setup** (coleção, tempo máximo e filtro por dificuldade quando disponível)
+- 🔀 **Aleatório** agora prioriza cards não respondidos
 - 🧭 **Acesso ao estudo bloqueado** sem coleção criada
 - 🗂️ **Migração de cards entre coleções**
 - 🧨 **Exclusão de coleção remove os cards associados**
 - 📦 **Importação com painel dedicado** em “Meus Cards”
 - 🏷️ **Cards mostram a coleção de origem**
+- 🔊 **Sons separados** (geral, ambiente e study) com controle de volume
 
 ---
 
@@ -51,7 +56,7 @@ As mudanças detalhadas estão em `CHANGELOG.md`.
 - Flask
 - SQLite
 - HTML, CSS e JavaScript
-- OpenAI API
+- OpenAI API ou Gemini API
 
 ---
 
@@ -85,12 +90,12 @@ Acesse:
 
 ---
 
-## 🔐 Configuração da API Key da OpenAI
+## 🔐 Configuração da API Key (OpenAI ou Gemini)
 
 ### Opção 1 — Pelo próprio app (recomendado)
 
 - Clique em **Configurações**
-- Cole a chave em **API Key (OpenAI)**
+- Cole a chave em **API Key (OpenAI ou Gemini)**
 - Salve
 
 > A chave fica salva no `localStorage` do navegador.
@@ -99,6 +104,8 @@ Acesse:
 
 ```bash
 export OPENAI_API_KEY="sua_chave_aqui"
+# ou
+export GEMINI_API_KEY="sua_chave_aqui"
 python app.py
 ```
 
@@ -176,9 +183,12 @@ flashcards.db
 - `DELETE /api/collections/:id`
 - `POST /api/import`
 - `GET /api/study/cards`
+- `GET /api/study/collections`
 - `GET /api/study/sessions`
 - `POST /api/study/sessions`
 - `DELETE /api/study/sessions/:id`
+- `GET /api/collections/:id/logs`
+- `GET /api/study/summary`
 
 ---
 

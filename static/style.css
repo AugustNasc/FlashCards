@@ -91,6 +91,20 @@ body.study-locked .study-header > div:first-child {
   align-items: center;
 }
 
+.site-footer {
+  padding: 20px 8vw 32px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: center;
+  color: rgba(31, 27, 22, 0.6);
+  font-size: 0.85rem;
+}
+
+body[data-theme="dark"] .site-footer {
+  color: rgba(248, 244, 238, 0.6);
+}
+
 .theme-switch {
   display: flex;
   gap: 8px;
@@ -358,6 +372,16 @@ button.accent.danger:hover {
 
 .toggle-line input {
   width: auto;
+}
+
+.range-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.range-line input[type="range"] {
+  flex: 1;
 }
 
 label {
@@ -751,15 +775,20 @@ body[data-theme="dark"] .report-card {
 }
 
 .sessions {
-  grid-column: 1 / -1;
+  grid-column: auto;
 }
 
 .sessions-list {
-  display: grid;
+  display: flex;
   gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
 }
 
 .session-item {
+  flex: 0 0 clamp(220px, calc((100% - 36px) / 4), 320px);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -769,6 +798,7 @@ body[data-theme="dark"] .report-card {
   background: rgba(31, 27, 22, 0.04);
   border: 1px solid rgba(31, 27, 22, 0.08);
   max-height: 160px;
+  scroll-snap-align: start;
   transition: opacity 0.35s ease, transform 0.35s ease, max-height 0.35s ease, margin 0.35s ease, padding 0.35s ease;
 }
 
@@ -898,16 +928,33 @@ body[data-theme="dark"] .session-score .delete-session {
   margin-top: 8px;
 }
 
-.goals-actions {
-  justify-content: flex-end;
-  margin-top: 6px;
+.goal-progress {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.goal-progress-item {
+  background: rgba(31, 27, 22, 0.04);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid rgba(31, 27, 22, 0.08);
+}
+
+.goal-progress-item strong {
+  font-size: 1.05rem;
 }
 
 .goal-day {
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid rgba(31, 27, 22, 0.18);
-  font-size: 0.9rem;
+  font-size: 0.82rem;
+  min-width: 46px;
 }
 
 .goal-day.active {
@@ -1170,6 +1217,10 @@ body[data-theme="dark"] .card .meta {
     width: 100%;
     padding: 10px 8px;
     font-size: 0.85rem;
+  }
+
+  .sessions {
+    grid-column: 1 / -1;
   }
 }
 

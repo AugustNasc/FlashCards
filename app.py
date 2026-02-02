@@ -1,9 +1,10 @@
 import csv
 import io
 import json
+import math
 import os
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import requests
 from flask import Flask, jsonify, request, send_file, send_from_directory
@@ -49,6 +50,7 @@ def init_db():
             """
             CREATE TABLE IF NOT EXISTS study_sessions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                collection_id INTEGER,
                 created_at TEXT NOT NULL,
                 duration_sec INTEGER NOT NULL,
                 total INTEGER NOT NULL,
@@ -60,6 +62,9 @@ def init_db():
             )
             """
         )
+        cols = [row["name"] for row in conn.execute("PRAGMA table_info(study_sessions)").fetchall()]
+        if "collection_id" not in cols:
+            conn.execute("ALTER TABLE study_sessions ADD COLUMN collection_id INTEGER")
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS card_difficulty (
@@ -100,6 +105,27 @@ def extract_output_text(response_json):
             if content.get("type") in ("output_text", "text"):
                 output_texts.append(content.get("text", ""))
     return "\n".join(output_texts).strip()
+
+
+def extract_gemini_text(response_json):
+    candidates = response_json.get("candidates") or []
+    for cand in candidates:
+        content = cand.get("content") or {}
+        parts = content.get("parts") or []
+        for part in parts:
+            text = part.get("text")
+            if text:
+                return text
+    return ""
+
+
+def detect_provider(api_key, hint=""):
+    hint = (hint or "").strip().lower()
+    if hint in ("openai", "gemini"):
+        return hint
+    if api_key.startswith("AIza"):
+        return "gemini"
+    return "openai"
 
 
 @app.route("/")
@@ -171,6 +197,46 @@ def study_cards():
     return jsonify([row_to_dict(row) for row in rows])
 
 
+@app.route("/api/study/collections", methods=["GET"])
+def list_study_collections():
+    with get_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                c.id,
+                c.name,
+                c.created_at,
+                COUNT(cards.id) AS card_count,
+                SUM(CASE WHEN cd.difficulty = 'easy' THEN 1 ELSE 0 END) AS easy_count,
+                SUM(CASE WHEN cd.difficulty = 'hard' THEN 1 ELSE 0 END) AS hard_count,
+                SUM(CASE WHEN cd.difficulty IN ('easy', 'hard') THEN 1 ELSE 0 END) AS rated_count
+            FROM collections c
+            LEFT JOIN cards ON cards.collection_id = c.id
+            LEFT JOIN card_difficulty cd ON cd.card_id = cards.id
+            GROUP BY c.id
+            ORDER BY c.name ASC
+            """
+        ).fetchall()
+    payload = []
+    for row in rows:
+        card_count = row["card_count"] or 0
+        easy_count = row["easy_count"] or 0
+        hard_count = row["hard_count"] or 0
+        rated_count = row["rated_count"] or 0
+        payload.append(
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "created_at": row["created_at"],
+                "card_count": card_count,
+                "easy_count": easy_count,
+                "hard_count": hard_count,
+                "difficulty_ready": card_count > 0 and rated_count == card_count,
+            }
+        )
+    return jsonify(payload)
+
+
 @app.route("/api/study/sessions", methods=["GET"])
 def list_study_sessions():
     with get_db() as conn:
@@ -200,59 +266,6 @@ def list_study_sessions():
     return jsonify(sessions)
 
 
-@app.route("/api/study/collections", methods=["GET"])
-def study_collections():
-    with get_db() as conn:
-        rows = conn.execute(
-            """
-            SELECT c.id, c.name,
-                   COUNT(cards.id) AS card_count,
-                   (
-                     SELECT COUNT(*)
-                     FROM card_difficulty cd
-                     JOIN cards c2 ON c2.id = cd.card_id
-                     WHERE c2.collection_id = c.id
-                   ) AS difficulty_count
-                   ,
-                   (
-                     SELECT COUNT(*)
-                     FROM card_difficulty cd
-                     JOIN cards c2 ON c2.id = cd.card_id
-                     WHERE c2.collection_id = c.id AND cd.difficulty = 'easy'
-                   ) AS easy_count,
-                   (
-                     SELECT COUNT(*)
-                     FROM card_difficulty cd
-                     JOIN cards c2 ON c2.id = cd.card_id
-                     WHERE c2.collection_id = c.id AND cd.difficulty = 'hard'
-                   ) AS hard_count
-            FROM collections c
-            LEFT JOIN cards ON cards.collection_id = c.id
-            GROUP BY c.id
-            ORDER BY c.name ASC
-            """
-        ).fetchall()
-    payload = []
-    for row in rows:
-        card_count = int(row["card_count"] or 0)
-        difficulty_count = int(row["difficulty_count"] or 0)
-        easy_count = int(row["easy_count"] or 0)
-        hard_count = int(row["hard_count"] or 0)
-        ready = card_count > 0 and difficulty_count == card_count
-        payload.append(
-            {
-                "id": row["id"],
-                "name": row["name"],
-                "card_count": card_count,
-                "difficulty_count": difficulty_count,
-                "easy_count": easy_count,
-                "hard_count": hard_count,
-                "difficulty_ready": ready,
-            }
-        )
-    return jsonify(payload)
-
-
 @app.route("/api/study/sessions", methods=["POST"])
 def create_study_session():
     data = request.get_json(force=True)
@@ -265,15 +278,17 @@ def create_study_session():
     details = data.get("details") or {}
     collection_id = data.get("collection_id")
     created_at = datetime.now(timezone.utc).isoformat()
+    collection_id_int = int(collection_id) if str(collection_id).isdigit() else None
 
     with get_db() as conn:
         cur = conn.execute(
             """
             INSERT INTO study_sessions
-            (created_at, duration_sec, total, correct, incorrect, easy, hard, details_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (collection_id, created_at, duration_sec, total, correct, incorrect, easy, hard, details_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
+                collection_id_int,
                 created_at,
                 duration_sec,
                 total,
@@ -367,14 +382,17 @@ def delete_card(card_id):
 
 @app.route("/api/generate", methods=["POST"])
 def generate_cards():
-    api_key = request.headers.get("X-OpenAI-Key", "").strip() or os.environ.get(
-        "OPENAI_API_KEY", ""
-    ).strip()
+    api_key = (
+        request.headers.get("X-API-Key", "").strip()
+        or request.headers.get("X-OpenAI-Key", "").strip()
+        or os.environ.get("OPENAI_API_KEY", "").strip()
+        or os.environ.get("GEMINI_API_KEY", "").strip()
+    )
     if not api_key:
         return (
             jsonify(
                 {
-                    "error": "Defina a API Key nas configurações ou em OPENAI_API_KEY.",
+                    "error": "Defina a API Key (OpenAI ou Gemini) nas configurações.",
                 }
             ),
             400,
@@ -395,27 +413,52 @@ def generate_cards():
         f"Tema: {topic or 'geral'}. Quantidade: {count}."
     )
 
-    response = requests.post(
-        "https://api.openai.com/v1/responses",
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": "gpt-4.1",
-            "input": prompt,
-            "text": {
-                "format": {"type": "json_object"},
+    provider = detect_provider(api_key, request.headers.get("X-Provider", ""))
+    output_text = ""
+    usage = {}
+    if provider == "gemini":
+        response = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}",
+            headers={"Content-Type": "application/json"},
+            json={
+                "contents": [
+                    {
+                        "role": "user",
+                        "parts": [{"text": prompt}],
+                    }
+                ],
+                "generationConfig": {"responseMimeType": "application/json"},
             },
-        },
-        timeout=60,
-    )
+            timeout=60,
+        )
+        if response.status_code >= 400:
+            return jsonify({"error": "Falha ao gerar cards", "details": response.text}), 502
+        response_json = response.json()
+        output_text = extract_gemini_text(response_json)
+        usage = response_json.get("usageMetadata") or {}
+    else:
+        response = requests.post(
+            "https://api.openai.com/v1/responses",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "gpt-4.1",
+                "input": prompt,
+                "text": {
+                    "format": {"type": "json_object"},
+                },
+            },
+            timeout=60,
+        )
 
-    if response.status_code >= 400:
-        return jsonify({"error": "Falha ao gerar cards", "details": response.text}), 502
+        if response.status_code >= 400:
+            return jsonify({"error": "Falha ao gerar cards", "details": response.text}), 502
 
-    response_json = response.json()
-    output_text = extract_output_text(response_json)
+        response_json = response.json()
+        output_text = extract_output_text(response_json)
+        usage = response_json.get("usage") or {}
 
     try:
         payload = json.loads(output_text)
@@ -453,7 +496,6 @@ def generate_cards():
                 }
             )
 
-    usage = response_json.get("usage", {})
     return jsonify({"created": saved, "usage": usage})
 
 
@@ -545,9 +587,43 @@ def export_xlsx():
 def list_collections():
     with get_db() as conn:
         rows = conn.execute(
-            "SELECT id, name, created_at FROM collections ORDER BY name ASC"
+            """
+            WITH card_counts AS (
+                SELECT collection_id, COUNT(*) AS card_count
+                FROM cards
+                GROUP BY collection_id
+            ),
+            completion_counts AS (
+                SELECT ss.collection_id, COUNT(*) AS completion_count
+                FROM study_sessions ss
+                JOIN card_counts cc ON cc.collection_id = ss.collection_id
+                WHERE ss.total >= cc.card_count AND cc.card_count > 0
+                GROUP BY ss.collection_id
+            )
+            SELECT
+                c.id,
+                c.name,
+                c.created_at,
+                COALESCE(cc.card_count, 0) AS card_count,
+                COALESCE(comp.completion_count, 0) AS completion_count
+            FROM collections c
+            LEFT JOIN card_counts cc ON cc.collection_id = c.id
+            LEFT JOIN completion_counts comp ON comp.collection_id = c.id
+            ORDER BY c.name ASC
+            """
         ).fetchall()
-    return jsonify([{"id": row["id"], "name": row["name"], "created_at": row["created_at"]} for row in rows])
+    return jsonify(
+        [
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "created_at": row["created_at"],
+                "card_count": row["card_count"],
+                "completion_count": row["completion_count"],
+            }
+            for row in rows
+        ]
+    )
 
 
 @app.route("/api/collections", methods=["POST"])
@@ -585,6 +661,194 @@ def _collection_exists(conn, collection_id):
     return row is not None
 
 
+def _get_focus_summary(conn, collection_id=None):
+    params = []
+    query = "SELECT created_at, total, correct, incorrect FROM study_sessions"
+    if collection_id is not None:
+        query += " WHERE collection_id = ?"
+        params.append(collection_id)
+    rows = conn.execute(query, params).fetchall()
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=7)
+    ratios = []
+    sessions_count = 0
+    for row in rows:
+        raw = row["created_at"]
+        if not raw:
+            continue
+        try:
+            dt = datetime.fromisoformat(raw)
+        except ValueError:
+            continue
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        else:
+            dt = dt.astimezone(timezone.utc)
+        if dt < cutoff:
+            continue
+        total = int(row["total"] or 0)
+        if total <= 0:
+            continue
+        answered = int(row["correct"] or 0) + int(row["incorrect"] or 0)
+        ratio = min(1.0, answered / total) if total else 0
+        ratios.append(ratio)
+        sessions_count += 1
+    score = round((sum(ratios) / len(ratios)) * 100) if ratios else 0
+    if sessions_count == 0:
+        label = "Sem sessões recentes"
+    elif score >= 85:
+        label = "Foco alto"
+    elif score >= 60:
+        label = "Foco médio"
+    else:
+        label = "Foco baixo"
+    return {
+        "score": score,
+        "label": label,
+        "sessions": sessions_count,
+        "period_start": cutoff.date().isoformat(),
+        "period_end": now.date().isoformat(),
+    }
+
+
+@app.route("/api/collections/<int:collection_id>/logs", methods=["GET"])
+def collection_logs(collection_id):
+    with get_db() as conn:
+        if not _collection_exists(conn, collection_id):
+            return jsonify({"error": "Coleção não encontrada."}), 404
+        row = conn.execute(
+            """
+            SELECT
+                SUM(CASE WHEN total > 0 AND (correct + incorrect) = total THEN 1 ELSE 0 END) AS sessions_complete,
+                SUM(CASE WHEN total > 0 AND (correct + incorrect) = total THEN total ELSE 0 END) AS cards_solved,
+                SUM(CASE WHEN total > 0 AND (correct + incorrect) = total THEN duration_sec ELSE 0 END) AS total_seconds
+            FROM study_sessions
+            WHERE collection_id = ?
+            """,
+            (collection_id,),
+        ).fetchone()
+    return jsonify(
+        {
+            "collection_id": collection_id,
+            "sessions_complete": row["sessions_complete"] or 0,
+            "cards_solved": row["cards_solved"] or 0,
+            "total_seconds": row["total_seconds"] or 0,
+        }
+    )
+
+
+@app.route("/api/study/summary", methods=["GET"])
+def study_summary():
+    collection_id = request.args.get("collection_id", "").strip()
+    collection_id_val = None
+    if collection_id.isdigit():
+        collection_id_val = int(collection_id)
+    with get_db() as conn:
+        if collection_id_val is not None and not _collection_exists(conn, collection_id_val):
+            return jsonify({"error": "Coleção não encontrada."}), 404
+        summary = _get_focus_summary(conn, collection_id_val)
+    summary["collection_id"] = collection_id_val
+    return jsonify(summary)
+
+
+def _normalize_goal_days(days):
+    if not isinstance(days, list):
+        return []
+    cleaned = []
+    for day in days:
+        try:
+            value = int(day)
+        except (TypeError, ValueError):
+            continue
+        if 0 <= value <= 6:
+            cleaned.append(value)
+    return sorted(set(cleaned))
+
+
+def _normalize_goal_targets(targets):
+    if not isinstance(targets, dict):
+        targets = {}
+
+    def to_int(value):
+        try:
+            val = int(value)
+        except (TypeError, ValueError):
+            return 0
+        return max(0, val)
+
+    return {
+        "weekly_cards": to_int(targets.get("weekly_cards")),
+        "weekly_minutes": to_int(targets.get("weekly_minutes")),
+        "weekly_sessions": to_int(targets.get("weekly_sessions")),
+    }
+
+
+def _parse_goals_json(raw_json):
+    try:
+        payload = json.loads(raw_json)
+    except (TypeError, json.JSONDecodeError):
+        return [], _normalize_goal_targets({})
+    if isinstance(payload, dict):
+        days = payload.get("days") or []
+        targets = payload.get("targets") or {}
+    else:
+        days = payload
+        targets = {}
+    return _normalize_goal_days(days), _normalize_goal_targets(targets)
+
+
+def _get_goal_progress(conn, collection_id):
+    rows = conn.execute(
+        """
+        SELECT created_at, duration_sec, total
+        FROM study_sessions
+        WHERE collection_id = ?
+        """,
+        (collection_id,),
+    ).fetchall()
+    today = datetime.now(timezone.utc).date()
+    week_start = today - timedelta(days=today.weekday())
+    week_end = week_start + timedelta(days=6)
+    week_sessions = 0
+    week_cards = 0
+    week_seconds = 0
+    session_dates = set()
+    for row in rows:
+        raw = row["created_at"]
+        if not raw:
+            continue
+        try:
+            dt = datetime.fromisoformat(raw)
+        except ValueError:
+            continue
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        else:
+            dt = dt.astimezone(timezone.utc)
+        session_date = dt.date()
+        session_dates.add(session_date)
+        if week_start <= session_date <= week_end:
+            week_sessions += 1
+            week_cards += int(row["total"] or 0)
+            week_seconds += int(row["duration_sec"] or 0)
+    week_minutes = int(math.ceil(week_seconds / 60)) if week_seconds else 0
+    streak = 0
+    cursor = today
+    while cursor in session_dates:
+        streak += 1
+        cursor = cursor - timedelta(days=1)
+    return (
+        {
+            "week_start": week_start.isoformat(),
+            "week_end": week_end.isoformat(),
+            "sessions": week_sessions,
+            "cards": week_cards,
+            "minutes": week_minutes,
+        },
+        streak,
+    )
+
+
 @app.route("/api/goals/<int:collection_id>", methods=["GET"])
 def get_goals(collection_id):
     with get_db() as conn:
@@ -598,12 +862,25 @@ def get_goals(collection_id):
             """,
             (collection_id,),
         ).fetchone()
+        progress, streak = _get_goal_progress(conn, collection_id)
     if not row:
-        return jsonify({"collection_id": collection_id, "days": []})
+        return jsonify(
+            {
+                "collection_id": collection_id,
+                "days": [],
+                "targets": _normalize_goal_targets({}),
+                "progress": progress,
+                "streak_days": streak,
+            }
+        )
+    days, targets = _parse_goals_json(row["days_json"])
     return jsonify(
         {
             "collection_id": row["collection_id"],
-            "days": json.loads(row["days_json"]),
+            "days": days,
+            "targets": targets,
+            "progress": progress,
+            "streak_days": streak,
             "created_at": row["created_at"],
             "updated_at": row["updated_at"],
         }
@@ -613,15 +890,13 @@ def get_goals(collection_id):
 @app.route("/api/goals/<int:collection_id>", methods=["PUT"])
 def save_goals(collection_id):
     data = request.get_json(force=True)
-    days = data.get("days") or []
+    days = data.get("days") if isinstance(data, dict) else []
+    if days is None:
+        days = []
     if not isinstance(days, list):
         return jsonify({"error": "Formato inválido para dias."}), 400
-    try:
-        days = sorted({int(day) for day in days})
-    except (TypeError, ValueError):
-        return jsonify({"error": "Dias inválidos."}), 400
-    if any(day < 0 or day > 6 for day in days):
-        return jsonify({"error": "Dias devem estar entre 0 e 6."}), 400
+    days = _normalize_goal_days(days)
+    targets = _normalize_goal_targets(data.get("targets") if isinstance(data, dict) else {})
     now = datetime.now(timezone.utc).isoformat()
     with get_db() as conn:
         if not _collection_exists(conn, collection_id):
@@ -637,7 +912,7 @@ def save_goals(collection_id):
                 SET days_json = ?, updated_at = ?
                 WHERE collection_id = ?
                 """,
-                (json.dumps(days), now, collection_id),
+                (json.dumps({"days": days, "targets": targets}), now, collection_id),
             )
         else:
             conn.execute(
@@ -645,9 +920,19 @@ def save_goals(collection_id):
                 INSERT INTO study_goals (collection_id, days_json, created_at, updated_at)
                 VALUES (?, ?, ?, ?)
                 """,
-                (collection_id, json.dumps(days), now, now),
+                (collection_id, json.dumps({"days": days, "targets": targets}), now, now),
             )
-    return jsonify({"collection_id": collection_id, "days": days, "updated_at": now})
+        progress, streak = _get_goal_progress(conn, collection_id)
+    return jsonify(
+        {
+            "collection_id": collection_id,
+            "days": days,
+            "targets": targets,
+            "progress": progress,
+            "streak_days": streak,
+            "updated_at": now,
+        }
+    )
 
 
 @app.route("/api/goals/<int:collection_id>", methods=["DELETE"])

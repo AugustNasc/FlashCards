@@ -2,6 +2,29 @@
 
 Todas as mudanças relevantes são documentadas aqui.
 
+## 2026-02-02
+
+### IA e configurações
+- API Key aceita **OpenAI ou Gemini** (detecção automática).
+- Novo header `X-API-Key` no front-end.
+- Configurações com **sons separados** (geral, ambiente e estudo) e **controle de volume**.
+
+### Modo estudo
+- **Tempo/Progresso** aparecem apenas após iniciar a sessão.
+- **Aleatório** agora sorteia apenas cards não respondidos.
+- Correções de scroll no desktop e foco automático no card ao iniciar.
+- Lista de sessões salva em **carrossel horizontal** (4 itens visíveis).
+- Som do modo study dedicado.
+
+### Coleções e métricas
+- Endpoint para coleções do study (`/api/study/collections`) com contagem de cards e dificuldade.
+- Contador de **coleção concluída** e logs de estudo por coleção (sessões completas, cards resolvidos, tempo).
+- Indicador de **Foco em estudo** baseado nas sessões dos últimos 7 dias.
+
+### UI e textos
+- Ajuste de headlines e descrições.
+- Remoção de referência a “Anki”.
+
 ## 2026-01-30
 
 ### Modo estudo
