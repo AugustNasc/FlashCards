@@ -61,10 +61,12 @@ let progressInterval = null;
 let collectionsCache = [];
 let confirmAction = null;
 let clickAudioCtx = null;
-const bgAudio = new Audio("/static/audio/background.mp3");
-bgAudio.loop = true;
-bgAudio.preload = "none";
-let bgPlayPending = false;
+let bgAudioCtx = null;
+let bgNoise = null;
+let bgFilter = null;
+let bgLfo = null;
+let bgGain = null;
+let bgStartPending = false;
 
 function isSoundEnabled() {
   return localStorage.getItem("sound_enabled") !== "0";
@@ -94,48 +96,117 @@ function getBackgroundVolume() {
 }
 
 function applyBackgroundVolume() {
-  bgAudio.volume = getBackgroundVolume() / 100;
+  if (!bgAudioCtx || !bgGain) return;
+  const now = bgAudioCtx.currentTime;
+  const target = (getBackgroundVolume() / 100) * 0.06;
+  bgGain.gain.setTargetAtTime(target, now, 0.2);
 }
 
 function startBackgroundAudio() {
   if (!isBackgroundEnabled()) return;
-  applyBackgroundVolume();
-  const playPromise = bgAudio.play();
-  if (playPromise && typeof playPromise.then === "function") {
-    playPromise
-      .then(() => {
-        bgPlayPending = false;
-      })
-      .catch(() => {
-        // Autoplay blocked; keep pending to retry on next gesture.
-      });
+  if (!bgAudioCtx) {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    bgAudioCtx = new AudioContext();
+    bgGain = bgAudioCtx.createGain();
+    bgGain.gain.value = 0.0;
+
+    const highpass = bgAudioCtx.createBiquadFilter();
+    highpass.type = "highpass";
+    highpass.frequency.value = 120;
+    highpass.Q.value = 0.7;
+
+    bgFilter = bgAudioCtx.createBiquadFilter();
+    bgFilter.type = "lowpass";
+    bgFilter.frequency.value = 1200;
+    bgFilter.Q.value = 0.7;
+
+    bgGain.connect(bgAudioCtx.destination);
+
+    const buffer = bgAudioCtx.createBuffer(1, bgAudioCtx.sampleRate * 2, bgAudioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i += 1) {
+      data[i] = (Math.random() * 2 - 1) * 0.35;
+    }
+    bgNoise = bgAudioCtx.createBufferSource();
+    bgNoise.buffer = buffer;
+    bgNoise.loop = true;
+    bgNoise.connect(highpass);
+    highpass.connect(bgFilter).connect(bgGain);
+    bgNoise.start();
+
+    bgLfo = bgAudioCtx.createOscillator();
+    const lfoGain = bgAudioCtx.createGain();
+    bgLfo.frequency.value = 0.03;
+    lfoGain.gain.value = 120;
+    bgLfo.connect(lfoGain).connect(bgFilter.frequency);
+    bgLfo.start();
+
+    const now = bgAudioCtx.currentTime;
+    bgGain.gain.setValueAtTime(0.0, now);
+    const target = (getBackgroundVolume() / 100) * 0.06;
+    bgGain.gain.linearRampToValueAtTime(target, now + 1.2);
   }
+  if (bgAudioCtx && bgAudioCtx.state === "suspended") {
+    bgAudioCtx.resume();
+  }
+  applyBackgroundVolume();
 }
 
 function stopBackgroundAudio() {
-  bgAudio.pause();
+  if (!bgAudioCtx || !bgGain) return;
+  const now = bgAudioCtx.currentTime;
+  bgGain.gain.cancelScheduledValues(now);
+  bgGain.gain.setValueAtTime(bgGain.gain.value, now);
+  bgGain.gain.linearRampToValueAtTime(0.0, now + 0.6);
+  setTimeout(() => {
+    if (bgNoise) {
+      try {
+        bgNoise.stop();
+      } catch (err) {
+        // ignore
+      }
+    }
+    if (bgLfo) {
+      try {
+        bgLfo.stop();
+      } catch (err) {
+        // ignore
+      }
+    }
+    if (bgAudioCtx) {
+      bgAudioCtx.close();
+    }
+    bgAudioCtx = null;
+    bgNoise = null;
+    bgFilter = null;
+    bgLfo = null;
+    bgGain = null;
+  }, 700);
 }
 
 function syncBackgroundAudio({ immediate = false } = {}) {
   if (!isBackgroundEnabled()) {
-    bgPlayPending = false;
+    bgStartPending = false;
     stopBackgroundAudio();
     return;
   }
-  bgPlayPending = true;
-  applyBackgroundVolume();
+  bgStartPending = true;
   if (immediate) {
     maybeStartBackgroundAudio();
   }
 }
 
 function maybeStartBackgroundAudio() {
-  if (!bgPlayPending) return;
+  if (!bgStartPending) return;
   if (!isBackgroundEnabled()) {
-    bgPlayPending = false;
+    bgStartPending = false;
     return;
   }
   startBackgroundAudio();
+  if (bgAudioCtx) {
+    bgStartPending = false;
+  }
 }
 
 function playClickSound() {

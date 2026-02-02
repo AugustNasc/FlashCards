@@ -52,10 +52,12 @@ let sessionActive = false;
 let autoAdvanceInterval = null;
 let clickAudioCtx = null;
 let timeUpPlayed = false;
-const studyAudio = new Audio("/static/audio/study.mp3");
-studyAudio.loop = true;
-studyAudio.preload = "none";
-let studyPlayPending = false;
+let studyAudioCtx = null;
+let studyNoise = null;
+let studyFilter = null;
+let studyLfo = null;
+let studyGain = null;
+let studyStartPending = false;
 
 function shouldLockStudyScroll() {
   return window.matchMedia("(max-width: 980px)").matches;
@@ -120,48 +122,117 @@ function getStudyVolume() {
 }
 
 function applyStudyVolume() {
-  studyAudio.volume = getStudyVolume() / 100;
+  if (!studyAudioCtx || !studyGain) return;
+  const now = studyAudioCtx.currentTime;
+  const target = (getStudyVolume() / 100) * 0.05;
+  studyGain.gain.setTargetAtTime(target, now, 0.2);
 }
 
 function startStudyAudio() {
   if (!isStudySoundEnabled()) return;
-  applyStudyVolume();
-  const playPromise = studyAudio.play();
-  if (playPromise && typeof playPromise.then === "function") {
-    playPromise
-      .then(() => {
-        studyPlayPending = false;
-      })
-      .catch(() => {
-        // Autoplay blocked; keep pending to retry on next gesture.
-      });
+  if (!studyAudioCtx) {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    studyAudioCtx = new AudioContext();
+    studyGain = studyAudioCtx.createGain();
+    studyGain.gain.value = 0.0;
+
+    const highpass = studyAudioCtx.createBiquadFilter();
+    highpass.type = "highpass";
+    highpass.frequency.value = 180;
+    highpass.Q.value = 0.7;
+
+    studyFilter = studyAudioCtx.createBiquadFilter();
+    studyFilter.type = "lowpass";
+    studyFilter.frequency.value = 900;
+    studyFilter.Q.value = 0.7;
+
+    studyGain.connect(studyAudioCtx.destination);
+
+    const buffer = studyAudioCtx.createBuffer(1, studyAudioCtx.sampleRate * 2, studyAudioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i += 1) {
+      data[i] = (Math.random() * 2 - 1) * 0.3;
+    }
+    studyNoise = studyAudioCtx.createBufferSource();
+    studyNoise.buffer = buffer;
+    studyNoise.loop = true;
+    studyNoise.connect(highpass);
+    highpass.connect(studyFilter).connect(studyGain);
+    studyNoise.start();
+
+    studyLfo = studyAudioCtx.createOscillator();
+    const lfoGain = studyAudioCtx.createGain();
+    studyLfo.frequency.value = 0.04;
+    lfoGain.gain.value = 100;
+    studyLfo.connect(lfoGain).connect(studyFilter.frequency);
+    studyLfo.start();
+
+    const now = studyAudioCtx.currentTime;
+    studyGain.gain.setValueAtTime(0.0, now);
+    const target = (getStudyVolume() / 100) * 0.05;
+    studyGain.gain.linearRampToValueAtTime(target, now + 1.2);
   }
+  if (studyAudioCtx && studyAudioCtx.state === "suspended") {
+    studyAudioCtx.resume();
+  }
+  applyStudyVolume();
 }
 
 function stopStudyAudio() {
-  studyAudio.pause();
+  if (!studyAudioCtx || !studyGain) return;
+  const now = studyAudioCtx.currentTime;
+  studyGain.gain.cancelScheduledValues(now);
+  studyGain.gain.setValueAtTime(studyGain.gain.value, now);
+  studyGain.gain.linearRampToValueAtTime(0.0, now + 0.6);
+  setTimeout(() => {
+    if (studyNoise) {
+      try {
+        studyNoise.stop();
+      } catch (err) {
+        // ignore
+      }
+    }
+    if (studyLfo) {
+      try {
+        studyLfo.stop();
+      } catch (err) {
+        // ignore
+      }
+    }
+    if (studyAudioCtx) {
+      studyAudioCtx.close();
+    }
+    studyAudioCtx = null;
+    studyNoise = null;
+    studyFilter = null;
+    studyLfo = null;
+    studyGain = null;
+  }, 700);
 }
 
 function syncStudyAudio({ immediate = false } = {}) {
   if (!isStudySoundEnabled() || !sessionActive) {
-    studyPlayPending = false;
+    studyStartPending = false;
     stopStudyAudio();
     return;
   }
-  studyPlayPending = true;
-  applyStudyVolume();
+  studyStartPending = true;
   if (immediate) {
     maybeStartStudyAudio();
   }
 }
 
 function maybeStartStudyAudio() {
-  if (!studyPlayPending) return;
+  if (!studyStartPending) return;
   if (!isStudySoundEnabled() || !sessionActive) {
-    studyPlayPending = false;
+    studyStartPending = false;
     return;
   }
   startStudyAudio();
+  if (studyAudioCtx) {
+    studyStartPending = false;
+  }
 }
 
 function playClickSound() {
