@@ -4,10 +4,12 @@ const examReport = document.getElementById("exam-report");
 const examSessionsPanel = document.getElementById("exam-sessions");
 
 const examStartBtn = document.getElementById("exam-start");
+const examModeSelect = document.getElementById("exam-mode");
 const examTopicInput = document.getElementById("exam-topic");
 const examNameInput = document.getElementById("exam-name");
 const examCountInput = document.getElementById("exam-count");
 const examMultiToggle = document.getElementById("exam-multi-toggle");
+const examMultiNote = document.getElementById("exam-multi-note");
 const examTimeToggle = document.getElementById("exam-time-toggle");
 const examTimeInput = document.getElementById("exam-time");
 const examCollectionSelect = document.getElementById("exam-collection");
@@ -15,6 +17,12 @@ const examCollectionStatus = document.getElementById("exam-collection-status");
 const examSetupStatus = document.getElementById("exam-setup-status");
 const examUsageStatus = document.getElementById("exam-usage-status");
 const examMissingKey = document.getElementById("exam-missing-key");
+const examSavedFields = document.getElementById("exam-saved-fields");
+const examAiFields = document.getElementById("exam-ai-fields");
+const examCollectionField = document.getElementById("exam-collection-field");
+const examNameField = document.getElementById("exam-name-field");
+const examTemplateSelect = document.getElementById("exam-template");
+const examTemplateStatus = document.getElementById("exam-template-status");
 
 const examProgressBar = document.getElementById("exam-progress-bar");
 
@@ -74,6 +82,7 @@ let reviewFilter = "all";
 
 let progressInterval = null;
 let clickAudioCtx = null;
+let examTemplatesCache = [];
 
 function shuffleInPlace(list) {
   if (!Array.isArray(list) || list.length < 2) return list;
@@ -93,32 +102,44 @@ const I18N = {
     "exam.header.eyebrow": "Modo prova",
     "exam.header.title": "Treine com múltipla escolha.",
     "exam.header.subtitle":
-      "Gere uma prova com IA (4 alternativas). Algumas perguntas podem ter 2 respostas corretas.",
+      "Faça uma prova salva (sem geração automática) ou gere uma nova automaticamente (4 alternativas). Algumas perguntas podem ter 2 respostas corretas.",
     "exam.timer": "Tempo",
     "exam.progress": "Progresso",
     "exam.score": "Respondidas",
     "exam.setup.title": "Configurar prova",
-    "exam.setup.subtitle": "Escolha uma coleção OU um tema/assunto e gere as perguntas.",
+    "exam.setup.subtitle": "Escolha uma prova salva ou gere uma nova automaticamente.",
     "exam.setup.missingKey":
       "Defina sua API Key na página inicial (Configurações) antes de gerar uma prova.",
-    "exam.setup.collection": "Coleção (opcional)",
-    "exam.setup.collectionNone": "Sem coleção",
-    "exam.setup.collectionEmpty": "Nenhuma coleção encontrada. Você ainda pode gerar por tema.",
-    "exam.setup.topic": "Tema / assunto (opcional)",
+    "exam.setup.collectionEmpty": "Nenhuma coleção encontrada. Crie uma coleção na página inicial.",
+    "exam.setup.collection": "Coleção",
+    "exam.setup.collectionPick": "Selecione uma coleção",
+    "exam.setup.collectionNote": "A coleção serve para salvar a prova e filtrar o histórico. A geração usa o tema.",
+    "exam.setup.mode": "Fonte das questões",
+    "exam.setup.mode.ai": "Gerar automaticamente",
+    "exam.setup.mode.saved": "Usar prova salva",
+    "exam.setup.modeNote": "Use “Prova salva” para refazer sem gerar novamente.",
+    "exam.setup.template": "Prova salva",
+    "exam.setup.templateEmpty": "Nenhuma prova salva encontrada.",
+    "exam.setup.templateNote": "Não gera novamente. As regras (ex.: 2 respostas corretas) vêm da prova escolhida.",
+    "exam.setup.topic": "Tema / assunto",
     "exam.setup.topicPlaceholder": "Ex.: Redes, Direito, História...",
-    "exam.setup.topicNote": "Se escolher uma coleção, o conteúdo dela será usado como referência.",
-    "exam.setup.name": "Nome da prova (opcional)",
+    "exam.setup.topicNote": "Obrigatório para gerar automaticamente.",
+    "exam.setup.name": "Nome da prova",
     "exam.setup.namePlaceholder": "Ex.: Simulado 01 · Redes",
     "exam.setup.nameNote": "Ajuda a encontrar a prova depois em “Minhas Provas”.",
     "exam.setup.count": "Quantidade de perguntas",
     "exam.setup.countUnit": "perguntas",
+    "exam.setup.advanced.summary": "Configurações adicionais",
     "exam.setup.allowMulti": "Permitir perguntas com 2 respostas corretas",
-    "exam.setup.allowMultiNote": "Quando ativado, parte das questões exigirá marcar 2 alternativas.",
+    "exam.setup.allowMultiNote": "Quando ativado, algumas questões (≈5%) exigirão marcar 2 alternativas.",
+    "exam.setup.allowMultiNoteSaved": "Esta prova define se existe (ou não) perguntas com 2 respostas corretas.",
     "exam.setup.timeLabel": "Tempo de prova (minutos)",
     "exam.setup.timeToggle": "Ativar limite de tempo",
     "exam.setup.timeUnit": "minutos por prova",
     "exam.setup.timeNote": "Ative para finalizar automaticamente quando o tempo acabar.",
     "exam.setup.start": "Gerar prova",
+    "exam.setup.startGenerate": "Gerar prova",
+    "exam.setup.startSaved": "Iniciar prova",
     "exam.loading": "Carregando...",
     "exam.prev": "◀ Anterior",
     "exam.next": "Próximo ▶",
@@ -128,6 +149,8 @@ const I18N = {
     "exam.status.generating": "Gerando prova...",
     "exam.status.missingKeyShort": "API Key não configurada.",
     "exam.status.invalidCount": "Quantidade inválida.",
+    "exam.status.missingTopic": "Defina um tema/assunto para gerar automaticamente.",
+    "exam.status.selectCollection": "Selecione uma coleção.",
     "exam.status.invalidTime": "Tempo inválido.",
     "exam.status.maxTwo": "Você pode marcar no máximo 2 alternativas.",
     "exam.status.timedOut": "Tempo finalizado. Prova concluída.",
@@ -135,7 +158,7 @@ const I18N = {
     "exam.status.saveFail": "Não foi possível salvar no histórico.",
     "exam.usage.tokens": "Tokens: {total} (entrada {input}, saída {output}).",
     "exam.hint.selectOne": "Selecione 1 alternativa.",
-    "exam.hint.selectFlexible": "Selecione 1 alternativa (algumas questões pedem 2).",
+    "exam.hint.selectFlexible": "Selecione 1 alternativa.",
     "exam.hint.selectTwo": "Selecione 2 alternativas.",
     "exam.hint.unanswered": "Ainda não respondida.",
     "exam.report.title": "Resultado",
@@ -176,31 +199,43 @@ const I18N = {
     "exam.header.eyebrow": "Exam mode",
     "exam.header.title": "Practice with multiple choice.",
     "exam.header.subtitle":
-      "Generate an exam with AI (4 options). Some questions may have 2 correct answers.",
+      "Take a saved exam (no generation) or generate a new one automatically (4 options). Some questions may have 2 correct answers.",
     "exam.timer": "Time",
     "exam.progress": "Progress",
     "exam.score": "Answered",
     "exam.setup.title": "Set up exam",
-    "exam.setup.subtitle": "Choose a collection OR a topic and generate the questions.",
+    "exam.setup.subtitle": "Pick a saved exam or generate a new one automatically.",
     "exam.setup.missingKey": "Set your API Key on the home page (Settings) before generating an exam.",
-    "exam.setup.collection": "Collection (optional)",
-    "exam.setup.collectionNone": "No collection",
-    "exam.setup.collectionEmpty": "No collections found. You can still generate by topic.",
-    "exam.setup.topic": "Topic (optional)",
+    "exam.setup.collectionEmpty": "No collections found. Create a collection on the home page.",
+    "exam.setup.collection": "Collection",
+    "exam.setup.collectionPick": "Select a collection",
+    "exam.setup.collectionNote": "The collection is used to save the exam and filter history. Generation uses the topic.",
+    "exam.setup.mode": "Question source",
+    "exam.setup.mode.ai": "Generate automatically",
+    "exam.setup.mode.saved": "Use saved exam",
+    "exam.setup.modeNote": "Use “Saved exam” to retake without generating again.",
+    "exam.setup.template": "Saved exam",
+    "exam.setup.templateEmpty": "No saved exams found.",
+    "exam.setup.templateNote": "No generation required. Rules (e.g. 2 correct answers) come from the selected exam.",
+    "exam.setup.topic": "Topic",
     "exam.setup.topicPlaceholder": "e.g. Networks, Law, History...",
-    "exam.setup.topicNote": "If you pick a collection, its content will be used as reference.",
-    "exam.setup.name": "Exam name (optional)",
+    "exam.setup.topicNote": "Required to generate automatically.",
+    "exam.setup.name": "Exam name",
     "exam.setup.namePlaceholder": "e.g. Mock 01 · Networks",
     "exam.setup.nameNote": "Helps you find it later under “My Exams”.",
     "exam.setup.count": "Number of questions",
     "exam.setup.countUnit": "questions",
+    "exam.setup.advanced.summary": "Additional settings",
     "exam.setup.allowMulti": "Allow questions with 2 correct answers",
-    "exam.setup.allowMultiNote": "When enabled, some questions will require selecting 2 options.",
+    "exam.setup.allowMultiNote": "When enabled, a few questions (~5%) will require selecting 2 options.",
+    "exam.setup.allowMultiNoteSaved": "This exam defines whether questions can have 2 correct answers.",
     "exam.setup.timeLabel": "Exam time (minutes)",
     "exam.setup.timeToggle": "Enable time limit",
     "exam.setup.timeUnit": "minutes per exam",
     "exam.setup.timeNote": "Enable to finish automatically when time runs out.",
     "exam.setup.start": "Generate exam",
+    "exam.setup.startGenerate": "Generate exam",
+    "exam.setup.startSaved": "Start exam",
     "exam.loading": "Loading...",
     "exam.prev": "◀ Previous",
     "exam.next": "Next ▶",
@@ -210,6 +245,8 @@ const I18N = {
     "exam.status.generating": "Generating exam...",
     "exam.status.missingKeyShort": "API Key not set.",
     "exam.status.invalidCount": "Invalid amount.",
+    "exam.status.missingTopic": "Set a topic to generate automatically.",
+    "exam.status.selectCollection": "Select a collection.",
     "exam.status.invalidTime": "Invalid time.",
     "exam.status.maxTwo": "You can select at most 2 options.",
     "exam.status.timedOut": "Time is up. Exam finished.",
@@ -217,7 +254,7 @@ const I18N = {
     "exam.status.saveFail": "Could not save to history.",
     "exam.usage.tokens": "Tokens: {total} (input {input}, output {output}).",
     "exam.hint.selectOne": "Select 1 option.",
-    "exam.hint.selectFlexible": "Select 1 option (some questions require 2).",
+    "exam.hint.selectFlexible": "Select 1 option.",
     "exam.hint.selectTwo": "Select 2 options.",
     "exam.hint.unanswered": "Not answered yet.",
     "exam.report.title": "Results",
@@ -300,6 +337,8 @@ function applyTranslations() {
     }
   });
   document.title = t("exam.pageTitle");
+  syncExamMultiNote();
+  applyExamModeUI();
 }
 
 function setLanguage(lang) {
@@ -324,6 +363,116 @@ function getApiKey() {
 
 function setSetupStatus(text) {
   examSetupStatus.textContent = text || "";
+}
+
+function getExamMode() {
+  if (!examModeSelect) return "ai";
+  return examModeSelect.value === "saved" ? "saved" : "ai";
+}
+
+function getSessionQuestionsCount(session) {
+  const details = session && session.details && typeof session.details === "object" ? session.details : {};
+  const qs = Array.isArray(details.questions) ? details.questions : [];
+  return qs.length;
+}
+
+function syncExamMultiNote() {
+  if (!examMultiNote) return;
+  const mode = getExamMode();
+  examMultiNote.textContent =
+    mode === "saved" ? t("exam.setup.allowMultiNoteSaved") : t("exam.setup.allowMultiNote");
+}
+
+function applyExamModeUI() {
+  const mode = getExamMode();
+  if (examAiFields) {
+    examAiFields.classList.toggle("hidden", mode !== "ai");
+  }
+  if (examSavedFields) {
+    examSavedFields.classList.toggle("hidden", mode !== "saved");
+  }
+  if (examCollectionField) {
+    examCollectionField.classList.toggle("hidden", mode !== "ai");
+  }
+  if (examNameField) {
+    examNameField.classList.toggle("hidden", mode !== "ai");
+  }
+
+  if (examStartBtn) {
+    examStartBtn.textContent = mode === "saved" ? t("exam.setup.startSaved") : t("exam.setup.startGenerate");
+    if (!examStartBtn.classList.contains("loading")) {
+      examStartBtn.disabled = mode === "saved" && !getSelectedTemplateSession();
+    }
+  }
+
+  if (examMissingKey) {
+    const hasKey = Boolean(getApiKey());
+    const showKeyWarning = mode === "ai" && !hasKey;
+    examMissingKey.classList.toggle("hidden", !showKeyWarning);
+  }
+
+  if (examMultiToggle) {
+    examMultiToggle.disabled = mode === "saved";
+    if (mode === "saved") {
+      const session = getSelectedTemplateSession();
+      if (session) {
+        examMultiToggle.checked = Boolean(session.allow_multi);
+      }
+    }
+  }
+  syncExamMultiNote();
+}
+
+function populateExamTemplates(sessions) {
+  if (!examTemplateSelect) return;
+  const list = Array.isArray(sessions) ? sessions : [];
+  examTemplatesCache = list.filter((s) => getSessionQuestionsCount(s) > 0);
+
+  const prevValue = String(examTemplateSelect.value || "");
+  examTemplateSelect.innerHTML = "";
+
+  if (!examTemplatesCache.length) {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.disabled = true;
+    opt.selected = true;
+    opt.textContent = t("exam.setup.templateEmpty");
+    examTemplateSelect.appendChild(opt);
+    if (examTemplateStatus) examTemplateStatus.textContent = t("exam.setup.templateEmpty");
+    return;
+  }
+
+  examTemplatesCache.forEach((session) => {
+    const opt = document.createElement("option");
+    opt.value = String(session.id);
+    const name = String(session.name || "").trim();
+    const topic = String(session.topic || "").trim();
+    const createdAt = session.created_at ? new Date(session.created_at).toLocaleString() : "";
+    const total = getSessionQuestionsCount(session);
+    const title = name || topic || createdAt || `#${String(session.id)}`;
+    const parts = [title];
+    if (topic && title !== topic) parts.push(topic);
+    if (total) parts.push(`${total}q`);
+    opt.textContent = parts.filter(Boolean).join(" · ");
+    examTemplateSelect.appendChild(opt);
+  });
+
+  const stillExists = examTemplatesCache.some((s) => String(s.id) === prevValue);
+  if (prevValue && stillExists) {
+    examTemplateSelect.value = prevValue;
+  } else {
+    examTemplateSelect.value = String(examTemplatesCache[0].id);
+  }
+
+  if (examTemplateStatus) examTemplateStatus.textContent = "";
+  applyExamModeUI();
+}
+
+function getSelectedTemplateSession() {
+  if (!examTemplateSelect) return null;
+  const id = String(examTemplateSelect.value || "");
+  if (!id) return null;
+  return examTemplatesCache.find((s) => String(s.id) === id) || null;
 }
 
 function setExamStatus(text) {
@@ -734,12 +883,7 @@ function renderQuestion() {
   if (!q) return;
   examQuestionEl.textContent = q.question || "";
   const required = requiredSelectionsFor(q);
-  examHintEl.textContent =
-    required === 2
-      ? t("exam.hint.selectTwo")
-      : activeAllowMulti
-        ? t("exam.hint.selectFlexible")
-        : t("exam.hint.selectOne");
+  examHintEl.textContent = required === 2 ? t("exam.hint.selectTwo") : t("exam.hint.selectOne");
 
   examOptionsEl.innerHTML = "";
   (q.options || []).forEach((opt, idx) => {
@@ -761,12 +905,12 @@ function toggleOption(idx) {
   const q = questions[currentIndex];
   if (!q) return;
   const required = requiredSelectionsFor(q);
-  const maxAllowed = activeAllowMulti ? 2 : required;
+  const maxAllowed = required;
   const selected = Array.isArray(answers[currentIndex]) ? [...answers[currentIndex]] : [];
   const already = selected.includes(idx);
 
   setExamStatus("");
-  if (required === 1 && !activeAllowMulti) {
+  if (required === 1) {
     answers[currentIndex] = already ? [] : [idx];
     updateOptionsActiveState();
     updateHeader();
@@ -1227,6 +1371,7 @@ async function loadExamSessions({ silent = false, collectionId = "" } = {}) {
     }
     const sessions = Array.isArray(data.sessions) ? data.sessions : [];
     renderExamSessions(sessions, data.summary || {});
+    populateExamTemplates(sessions);
   } catch (err) {
     if (!silent) {
       setExamSessionsStatus(err.message);
@@ -1235,7 +1380,9 @@ async function loadExamSessions({ silent = false, collectionId = "" } = {}) {
 }
 
 async function clearExamHistory() {
-  const collectionId = (examCollectionSelect && examCollectionSelect.value ? examCollectionSelect.value : "").trim();
+  const mode = getExamMode();
+  const collectionId =
+    mode === "saved" ? "" : (examCollectionSelect && examCollectionSelect.value ? examCollectionSelect.value : "").trim();
   const message = collectionId ? t("exam.sessions.clearConfirmCollection") : t("exam.sessions.clearConfirm");
   if (!window.confirm(message)) return;
   playDeleteSound();
@@ -1288,10 +1435,12 @@ function finishExam({ timedOut: timedOutFlag = false } = {}) {
 async function loadCollections() {
   setCollectionsStatus(t("exam.status.loadingCollections"));
   examCollectionSelect.innerHTML = "";
-  const optNone = document.createElement("option");
-  optNone.value = "";
-  optNone.textContent = t("exam.setup.collectionNone");
-  examCollectionSelect.appendChild(optNone);
+  const optPick = document.createElement("option");
+  optPick.value = "";
+  optPick.textContent = t("exam.setup.collectionPick");
+  optPick.disabled = true;
+  optPick.selected = true;
+  examCollectionSelect.appendChild(optPick);
   try {
     const res = await fetch("/api/collections");
     const list = await res.json();
@@ -1301,15 +1450,14 @@ async function loadCollections() {
       opt.value = col.id;
       const count = Number(col.card_count || 0);
       opt.textContent = `${col.name} (${count})`;
-      opt.disabled = count <= 0;
       examCollectionSelect.appendChild(opt);
     });
     const saved = localStorage.getItem("active_collection") || "";
     if (saved) {
       examCollectionSelect.value = saved;
-      if (examCollectionSelect.selectedOptions[0] && examCollectionSelect.selectedOptions[0].disabled) {
-        examCollectionSelect.value = "";
-      }
+    }
+    if (!examCollectionSelect.value && collections.length) {
+      examCollectionSelect.value = String(collections[0].id);
     }
     if (!collections.length) {
       setCollectionsStatus(t("exam.setup.collectionEmpty"));
@@ -1322,18 +1470,68 @@ async function loadCollections() {
 }
 
 async function startExam() {
-  const key = getApiKey();
-  if (!key) {
-    examMissingKey.classList.remove("hidden");
-    setSetupStatus(t("exam.status.missingKeyShort"));
-    return;
-  }
-  examMissingKey.classList.add("hidden");
   setSetupStatus("");
   setUsageStatus("");
 
-  const topic = (examTopicInput.value || "").trim();
+  const mode = getExamMode();
+
   const name = (examNameInput && examNameInput.value ? examNameInput.value : "").trim();
+  const timeLimitSec = getTimeLimitSecFromUI();
+  if (examTimeToggle && examTimeToggle.checked && timeLimitSec <= 0) {
+    setSetupStatus(t("exam.status.invalidTime"));
+    return;
+  }
+
+  if (mode === "saved") {
+    const session = getSelectedTemplateSession();
+    if (!session) {
+      setSetupStatus(t("exam.setup.templateEmpty"));
+      return;
+    }
+    const details = session.details && typeof session.details === "object" ? session.details : {};
+    const qs = Array.isArray(details.questions) ? details.questions : [];
+    if (!qs.length) {
+      setSetupStatus(t("exam.sessions.missingDetails"));
+      return;
+    }
+
+    questions = qs;
+    questions.forEach((item) => fixQuestionCorrectFromExplanation(item));
+    shuffleInPlace(questions);
+    answers = qs.map(() => []);
+    generationUsage = {};
+    currentIndex = 0;
+
+    activeTopic = String(session.topic || "");
+    activeExamName = String(session.name || "");
+    activeAllowMulti = Boolean(session.allow_multi);
+    activeTimeLimitSec = timeLimitSec;
+    activeCollectionId = session.collection_id ? String(session.collection_id) : "";
+
+    if (examMultiToggle) {
+      examMultiToggle.checked = activeAllowMulti;
+    }
+    syncExamMultiNote();
+
+    openSession();
+    renderQuestion();
+    setExamStatus("");
+    return;
+  }
+
+  const key = getApiKey();
+  if (!key) {
+    if (examMissingKey) examMissingKey.classList.remove("hidden");
+    setSetupStatus(t("exam.status.missingKeyShort"));
+    return;
+  }
+  if (examMissingKey) examMissingKey.classList.add("hidden");
+
+  const topic = (examTopicInput.value || "").trim();
+  if (!topic) {
+    setSetupStatus(t("exam.status.missingTopic"));
+    return;
+  }
   const count = Number(examCountInput.value || 10);
   if (!Number.isFinite(count) || count < 1 || count > 40) {
     setSetupStatus(t("exam.status.invalidCount"));
@@ -1341,12 +1539,12 @@ async function startExam() {
   }
 
   const collectionId = (examCollectionSelect.value || "").trim();
-  const allowMulti = Boolean(examMultiToggle.checked);
-  const timeLimitSec = getTimeLimitSecFromUI();
-  if (examTimeToggle && examTimeToggle.checked && timeLimitSec <= 0) {
-    setSetupStatus(t("exam.status.invalidTime"));
+  if (!collectionId) {
+    setSetupStatus(t("exam.status.selectCollection"));
     return;
   }
+  const allowMulti = Boolean(examMultiToggle.checked);
+
   activeCollectionId = collectionId || "";
   activeTopic = topic;
   activeExamName = name;
@@ -1369,7 +1567,7 @@ async function startExam() {
       body: JSON.stringify({
         topic,
         count,
-        collection_id: collectionId ? Number(collectionId) : null,
+        collection_id: null,
         allow_multi: allowMulti,
       }),
     });
@@ -1547,6 +1745,34 @@ examStartBtn.addEventListener("click", () => {
   void startExam();
 });
 
+if (examModeSelect) {
+  examModeSelect.addEventListener("change", () => {
+    const mode = getExamMode();
+    const collectionId =
+      mode === "saved" ? "" : (examCollectionSelect && examCollectionSelect.value ? examCollectionSelect.value : "").trim();
+    void loadExamSessions({ silent: true, collectionId });
+    applyExamModeUI();
+    setSetupStatus("");
+  });
+}
+
+if (examTemplateSelect) {
+  examTemplateSelect.addEventListener("change", () => {
+    const session = getSelectedTemplateSession();
+    if (!session) return;
+    if (examMultiToggle) {
+      examMultiToggle.checked = Boolean(session.allow_multi);
+    }
+    syncExamMultiNote();
+    if (examNameInput) {
+      const selectedName = String(session.name || "").trim();
+      if (selectedName) {
+        examNameInput.value = selectedName;
+      }
+    }
+  });
+}
+
 examPrevBtn.addEventListener("click", () => {
   if (!questions.length) return;
   currentIndex = Math.max(0, currentIndex - 1);
@@ -1604,7 +1830,9 @@ if (examFilterIncorrectBtn) {
 
 if (examRefreshSessionsBtn) {
   examRefreshSessionsBtn.addEventListener("click", () => {
-    void loadExamSessions({ silent: true, collectionId: (examCollectionSelect.value || "").trim() });
+    const mode = getExamMode();
+    const collectionId = mode === "saved" ? "" : (examCollectionSelect.value || "").trim();
+    void loadExamSessions({ silent: true, collectionId });
   });
 }
 
@@ -1638,8 +1866,10 @@ themeButtons.forEach((btn) => {
 setLanguage(detectLanguage());
 loadTheme();
 applyTimeLimitUI();
+applyExamModeUI();
 void loadCollections().then(() => {
-  const collectionId = (examCollectionSelect.value || "").trim();
+  const mode = getExamMode();
+  const collectionId = mode === "saved" ? "" : (examCollectionSelect.value || "").trim();
   void loadExamSessions({ silent: true, collectionId });
 
   const storedView = readStoredView();

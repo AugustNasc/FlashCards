@@ -356,12 +356,17 @@ Regras:
             <button class="ghost" id="import-exams" data-i18n="exams.import.button">Importar</button>
             <p id="exams-import-status" class="status" aria-live="polite"></p>
           </div>
-        </div>
-        <div id="exams-wrapper">
-          <div id="exams-list" class="sessions-list"></div>
-        </div>
-        <p id="exams-status" class="status" aria-live="polite"></p>
-      </section>
+	        </div>
+	        <div id="exams-wrapper">
+	          <div id="exams-list" class="sessions-list"></div>
+	          <div id="exams-pagination" class="cards-pagination hidden">
+	            <button class="ghost small" id="exams-page-prev">◀</button>
+	            <span id="exams-page-info" data-i18n="exams.pageInfo">Página 1/1</span>
+	            <button class="ghost small" id="exams-page-next">▶</button>
+	          </div>
+	        </div>
+	        <p id="exams-status" class="status" aria-live="polite"></p>
+	      </section>
 
       <section class="panel panel-wide">
         <div class="panel-header">
@@ -454,20 +459,30 @@ Regras:
       </span>
     </footer>
 
-    <div id="confirm-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h3 id="confirm-title" data-i18n="confirm.title">Confirmar ação</h3>
-        </div>
-        <p id="confirm-message" class="muted"></p>
-        <div class="modal-actions">
-          <button class="ghost" id="confirm-cancel" data-i18n="confirm.cancel">Cancelar</button>
-          <button class="accent danger" id="confirm-ok" data-sound="important" data-i18n="confirm.ok">Confirmar</button>
-        </div>
-      </div>
-    </div>
+	    <div id="confirm-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+	      <div class="modal-card">
+	        <div class="modal-header">
+	          <h3 id="confirm-title" data-i18n="confirm.title">Confirmar ação</h3>
+	        </div>
+	        <p id="confirm-message" class="muted"></p>
+	        <div class="modal-actions">
+	          <button class="ghost" id="confirm-cancel" data-i18n="confirm.cancel">Cancelar</button>
+	          <button class="accent danger" id="confirm-ok" data-sound="important" data-i18n="confirm.ok">Confirmar</button>
+	        </div>
+	      </div>
+	    </div>
 
-    <div id="import-backdrop" class="modal-backdrop hidden" aria-hidden="true"></div>
+	    <div id="attempts-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="attempts-modal-title">
+	      <div class="modal-card wide attempts-modal-card">
+	        <div class="modal-header">
+	          <h3 id="attempts-modal-title">Tentativas</h3>
+	          <button class="ghost icon-btn" id="close-attempts-modal" aria-label="Fechar">✕</button>
+	        </div>
+	        <div id="attempts-modal-body"></div>
+	      </div>
+	    </div>
+
+	    <div id="import-backdrop" class="modal-backdrop hidden" aria-hidden="true"></div>
 
     <div id="share-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="share-modal-title" aria-describedby="share-modal-note">
       <div class="modal-card wide">

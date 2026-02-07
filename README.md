@@ -25,6 +25,8 @@ Construído com **Flask + SQLite**, funciona **sem login**, é simples de rodar 
   - logs por coleção e indicador de foco (últimos 7 dias)
 - **Provas**
   - modo prova (múltipla escolha) com revisão completa e histórico
+  - **gerar automaticamente** (com API Key) ou **usar prova salva** (sem geração)
+  - opção de permitir poucas questões (≈5%) com **2 respostas corretas**
   - filtro na revisão por **acertos/erros**
 - **Compartilhamento**
   - links de template e desafio (com senha opcional, limite de acessos e expiração)
@@ -177,6 +179,9 @@ flashcards.db
 - `POST /api/exam/sessions`
 - `DELETE /api/exam/sessions/:id`
 - `POST /api/exam/sessions/clear`
+- `POST /api/exam/import`
+- `GET /api/exam/export/csv`
+- `GET /api/exam/export/xlsx`
 
 ### Compartilhamento / Desafio
 - `POST /api/share`
@@ -200,3 +205,7 @@ pip install openpyxl
 ### IA não gera cards?
 - Verifique a API key
 - Confira a variável de ambiente
+
+### Modo prova não gera?
+- Confirme a API Key em **Configurações** (ou `OPENAI_API_KEY` / `GEMINI_API_KEY`)
+- Em **Fonte das questões**, escolha **Gerar automaticamente**

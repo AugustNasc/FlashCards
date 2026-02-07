@@ -35,13 +35,17 @@ Todas as mudanças relevantes são documentadas aqui.
 ## 2026-02-07
 
 ### Modo prova
+- Setup mais claro: **Gerar automaticamente** (com API Key) vs **Usar prova salva** (sem geração).
+- “Configurações adicionais” agrupa opções menos essenciais (ex.: nome da prova).
 - Revisão passa a exibir as **alternativas** e marcações (correta/selecionada).
 - Filtro no resultado: clique em **Acertos** ou **Erros** para ver apenas as questões correspondentes.
 - Visualização de provas no histórico é permitida **apenas após concluir** (com respostas registradas).
+- Quando “2 respostas corretas” está ativo, apenas poucas questões (≈5%) pedem 2 alternativas e o hint só aparece quando necessário.
+- Pós-processamento no backend para reduzir vieses (ex.: gabarito sempre em A) e remover frases do tipo “Selecione todas as corretas”.
 
 ### Minhas Provas (histórico)
 - Tentativas de uma mesma prova são **agrupadas em um único card** (reduz poluição visual).
-- Lista de tentativas acessível pelo botão `≡`, com **visualizar** e **excluir** por tentativa.
+- Lista de tentativas acessível pelo botão `≡`, com **visualizar** e **excluir** por tentativa (modal com fechar ao clicar fora/ESC).
 
 ### Importação (ajuda)
 - Ajuda (`?`) de importação de **Provas** e **Cards** com botões de **copiar** exemplos e **modelo para IA**.

@@ -4,6 +4,7 @@ import json
 import hashlib
 import math
 import os
+import random
 import re
 import secrets
 import sqlite3
@@ -351,6 +352,34 @@ def _normalize_mcq_correct(raw):
         seen.add(idx)
         normalized.append(idx)
     return normalized
+
+
+_MCQ_QUESTION_BANNED_HINTS = [
+    # Portuguese
+    r"\bselecione\s+todas\s+as\s+corretas\b",
+    r"\bselecione\s+todas\s+as\s+alternativas\s+corretas\b",
+    r"\bassinale\s+todas\s+as\s+corretas\b",
+    r"\bmarque\s+todas\s+as\s+corretas\b",
+    r"\bselecione\s+todas\s+as\s+op(?:ç|c)oes\s+corretas\b",
+    # English
+    r"\bselect\s+all\s+that\s+apply\b",
+    r"\bchoose\s+all\s+that\s+apply\b",
+    r"\bmark\s+all\s+that\s+apply\b",
+    r"\bselect\s+all\s+correct\b",
+    r"\bselect\s+all\s+correct\s+options\b",
+]
+
+
+def _sanitize_exam_question_text(text):
+    """Remove UI-like selection hints that the app already handles."""
+    raw = str(text or "")
+    cleaned = raw
+    for pat in _MCQ_QUESTION_BANNED_HINTS:
+        # Remove inside parentheses/brackets or as standalone trailing sentence/fragment.
+        cleaned = re.sub(rf"\s*[\(\[]\s*{pat}\s*[\)\]]\s*", " ", cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(rf"[\s\-–—:;,.]*{pat}[\s\-–—:;,.]*", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned
 
 
 _MCQ_EXPLANATION_STOPWORDS = {
@@ -991,7 +1020,7 @@ def generate_exam():
     max_correct = 2 if allow_multi else 1
     multi_target = 0
     if allow_multi:
-        multi_target = max(1, int(round(count * 0.25))) if count > 1 else 0
+        multi_target = max(1, int(round(count * 0.05))) if count > 1 else 0
         multi_target = min(count, multi_target)
 
     collection_id = data.get("collection_id")
@@ -1053,7 +1082,8 @@ def generate_exam():
         multi_instruction = "- 'correct' deve ter EXATAMENTE 1 índice.\n"
     else:
         multi_instruction = (
-            f"- Crie aproximadamente {multi_target} perguntas com 2 respostas corretas (ou menos se não fizer sentido).\n"
+            f"- Crie aproximadamente {multi_target} perguntas com 2 respostas corretas (≈5% do total).\n"
+            f"- Não crie mais do que {multi_target} perguntas com 2 respostas corretas.\n"
             "- Para essas, 'correct' deve ter EXATAMENTE 2 índices.\n"
             "- Para as demais, 'correct' deve ter EXATAMENTE 1 índice.\n"
         )
@@ -1071,7 +1101,7 @@ def generate_exam():
         "    {\n"
         '      "question": "Pergunta...",\n'
         '      "options": ["Opção 1", "Opção 2", "Opção 3", "Opção 4"],\n'
-        '      "correct": [0],\n'
+        '      "correct": [2],\n'
         '      "explanation": "Explicação curta."\n'
         "    }\n"
         "  ]\n"
@@ -1080,9 +1110,11 @@ def generate_exam():
         "- Sempre 4 opções em 'options'.\n"
         "- Não coloque letras (A, B, C, D) dentro das opções.\n"
         "- 'correct' deve ser uma lista de índices (0 a 3) que apontam para 'options'.\n"
+        "- Não inclua instruções no texto da pergunta sobre como selecionar respostas (ex.: 'Selecione todas as corretas', 'Select all that apply').\n"
         "- 'explanation' é obrigatório e deve ser curto (1–2 frases), explicando por que a(s) correta(s) está(ão) correta(s).\n"
         "- A explicação deve citar explicitamente a(s) alternativa(s) correta(s) usando o texto da opção (ex.: 'Amazon S3').\n"
         "- Revise o gabarito: a(s) opção(ões) em 'correct' deve(m) corresponder à explicação.\n"
+        "- Distribua a posição da(s) alternativa(s) correta(s) entre as 4 opções (evite deixar sempre a primeira).\n"
         f"{multi_instruction}"
         "- Use o material de estudo da coleção como base principal quando ele for fornecido.\n"
         "- Evite alternativas ambíguas e não use 'todas as anteriores'/'nenhuma das anteriores'.\n"
@@ -1184,7 +1216,8 @@ def generate_exam():
             break
         if not isinstance(item, dict):
             continue
-        question_text = str(item.get("question") or "").strip()
+        question_text = _sanitize_exam_question_text(item.get("question") or "")
+        question_text = str(question_text or "").strip()
         options = item.get("options")
         if not question_text or not isinstance(options, list):
             continue
@@ -1218,6 +1251,21 @@ def generate_exam():
         )
 
     normalized = [_fix_mcq_correct_from_explanation(q) for q in normalized]
+    for q in normalized:
+        options = q.get("options") or []
+        correct = q.get("correct") or []
+        if not isinstance(options, list) or len(options) != 4:
+            continue
+        if not isinstance(correct, list) or not correct:
+            continue
+        indices = list(range(4))
+        random.shuffle(indices)
+        index_map = {old_idx: new_idx for new_idx, old_idx in enumerate(indices)}
+        new_correct = [index_map[i] for i in correct if i in index_map]
+        if len(new_correct) != len(correct):
+            continue
+        q["options"] = [options[i] for i in indices]
+        q["correct"] = sorted(new_correct)
 
     if not normalized:
         return api_error("Nenhuma pergunta válida foi gerada.", 502, code="ai_empty")

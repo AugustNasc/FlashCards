@@ -29,11 +29,11 @@
     <header class="study-header">
       <div>
         <p class="eyebrow" data-i18n="exam.header.eyebrow">Modo prova</p>
-        <h1 data-i18n="exam.header.title">Treine com múltipla escolha.</h1>
-        <p class="subhead" data-i18n="exam.header.subtitle">
-          Gere uma prova com IA (4 alternativas). Algumas perguntas podem ter 2 respostas corretas.
-        </p>
-      </div>
+	        <h1 data-i18n="exam.header.title">Treine com múltipla escolha.</h1>
+	        <p class="subhead" data-i18n="exam.header.subtitle">
+	          Faça uma prova salva (sem geração automática) ou gere uma nova automaticamente (4 alternativas). Algumas perguntas podem ter 2 respostas corretas.
+	        </p>
+	      </div>
       <div class="study-actions">
         <div class="session-pill hidden" id="exam-timer-pill">
           <span data-i18n="exam.timer">Tempo</span>
@@ -51,79 +51,109 @@
     </header>
 
     <main class="study-layout">
-      <section class="study-panel" id="exam-setup">
-        <h2 data-i18n="exam.setup.title">Configurar prova</h2>
-        <p class="muted" data-i18n="exam.setup.subtitle">
-          Escolha um tema (ou uma coleção) e gere as perguntas.
-        </p>
-        <div id="exam-missing-key" class="notice warning hidden" role="status" aria-live="polite">
-          <span data-i18n="exam.setup.missingKey">
-            Defina sua API Key na página inicial (Configurações) antes de gerar uma prova.
-          </span>
-        </div>
-        <div class="field">
-          <label for="exam-collection" data-i18n="exam.setup.collection">Coleção (opcional)</label>
-          <select id="exam-collection"></select>
-          <p id="exam-collection-status" class="status"></p>
-        </div>
-        <div class="field">
-          <label for="exam-topic" data-i18n="exam.setup.topic">Tema / assunto (opcional)</label>
-          <input
-            id="exam-topic"
-            type="text"
-            placeholder="Ex.: Redes, Direito, História..."
-            data-i18n-placeholder="exam.setup.topicPlaceholder"
-          />
-          <p class="muted" data-i18n="exam.setup.topicNote">
-            Se escolher uma coleção, o conteúdo dela será usado como referência.
-          </p>
-        </div>
-        <div class="field">
-          <label for="exam-name" data-i18n="exam.setup.name">Nome da prova (opcional)</label>
-          <input
-            id="exam-name"
-            type="text"
-            placeholder="Ex.: Simulado 01 · Redes"
-            data-i18n-placeholder="exam.setup.namePlaceholder"
-          />
-          <p class="muted" data-i18n="exam.setup.nameNote">
-            Ajuda a encontrar a prova depois em “Minhas Provas”.
-          </p>
-        </div>
-        <div class="field">
-          <label for="exam-count" data-i18n="exam.setup.count">Quantidade de perguntas</label>
-          <div class="inline">
-            <input id="exam-count" type="number" min="1" max="40" value="10" />
-            <span class="muted" data-i18n="exam.setup.countUnit">perguntas</span>
-          </div>
-        </div>
-        <div class="field">
-          <label class="toggle-line" for="exam-multi-toggle">
-            <input id="exam-multi-toggle" type="checkbox" />
-            <span data-i18n="exam.setup.allowMulti">Permitir perguntas com 2 respostas corretas</span>
-          </label>
-          <p class="muted" data-i18n="exam.setup.allowMultiNote">
-            Quando ativado, parte das questões exigirá marcar 2 alternativas.
-          </p>
-        </div>
-        <div class="field">
-          <label for="exam-time" data-i18n="exam.setup.timeLabel">Tempo de prova (minutos)</label>
-          <label class="toggle-line" for="exam-time-toggle">
-            <input id="exam-time-toggle" type="checkbox" />
-            <span data-i18n="exam.setup.timeToggle">Ativar limite de tempo</span>
-          </label>
-          <div class="inline">
-            <input id="exam-time" type="number" min="1" max="240" value="10" />
-            <span class="muted" data-i18n="exam.setup.timeUnit">minutos por prova</span>
-          </div>
-          <p class="muted" data-i18n="exam.setup.timeNote">
-            Ative para finalizar automaticamente quando o tempo acabar.
-          </p>
-        </div>
-        <button id="exam-start" data-sound="generate" data-i18n="exam.setup.start">Gerar prova</button>
-        <div class="progress">
-          <div id="exam-progress-bar" class="progress-bar"></div>
-        </div>
+	      <section class="study-panel" id="exam-setup">
+		        <h2 data-i18n="exam.setup.title">Configurar prova</h2>
+		        <p class="muted" data-i18n="exam.setup.subtitle">
+		          Escolha uma prova salva ou gere uma nova automaticamente.
+		        </p>
+	        <div id="exam-missing-key" class="notice warning hidden" role="status" aria-live="polite">
+	          <span data-i18n="exam.setup.missingKey">
+	            Defina sua API Key na página inicial (Configurações) antes de gerar uma prova.
+	          </span>
+	        </div>
+	        <div class="field">
+	          <label for="exam-mode" data-i18n="exam.setup.mode">Fonte das questões</label>
+		          <select id="exam-mode">
+		            <option value="ai" data-i18n="exam.setup.mode.ai">Gerar automaticamente</option>
+		            <option value="saved" data-i18n="exam.setup.mode.saved">Usar prova salva</option>
+		          </select>
+		          <p class="muted" data-i18n="exam.setup.modeNote">
+		            Use “Prova salva” para refazer sem gerar novamente.
+		          </p>
+	        </div>
+		        <div class="field" id="exam-collection-field">
+		          <label for="exam-collection" data-i18n="exam.setup.collection">Coleção</label>
+		          <select id="exam-collection"></select>
+		          <p id="exam-collection-status" class="status"></p>
+				          <p class="muted" data-i18n="exam.setup.collectionNote">
+				            A coleção serve para salvar a prova e filtrar o histórico. A geração usa o tema.
+				          </p>
+			        </div>
+	        <div id="exam-saved-fields" class="hidden">
+	          <div class="field">
+	            <label for="exam-template" data-i18n="exam.setup.template">Prova salva</label>
+	            <select id="exam-template"></select>
+	            <p id="exam-template-status" class="status"></p>
+		            <p class="muted" data-i18n="exam.setup.templateNote">
+		              Não gera novamente. As regras (ex.: 2 respostas corretas) vêm da prova escolhida.
+		            </p>
+	          </div>
+	        </div>
+		        <div id="exam-ai-fields">
+		          <div class="field">
+		            <label for="exam-topic" data-i18n="exam.setup.topic">Tema / assunto</label>
+		            <input
+		              id="exam-topic"
+		              type="text"
+		              placeholder="Ex.: Redes, Direito, História..."
+		              data-i18n-placeholder="exam.setup.topicPlaceholder"
+		            />
+				            <p class="muted" data-i18n="exam.setup.topicNote">
+				              Obrigatório para gerar automaticamente.
+				            </p>
+			          </div>
+	          <div class="field">
+	            <label for="exam-count" data-i18n="exam.setup.count">Quantidade de perguntas</label>
+	            <div class="inline">
+	              <input id="exam-count" type="number" min="1" max="40" value="10" />
+	              <span class="muted" data-i18n="exam.setup.countUnit">perguntas</span>
+	            </div>
+	          </div>
+	        </div>
+		        <div class="field">
+		          <details class="disclosure">
+		            <summary data-i18n="exam.setup.advanced.summary">Configurações adicionais</summary>
+		            <div class="disclosure-body">
+		              <div class="field" id="exam-name-field">
+		                <label for="exam-name" data-i18n="exam.setup.name">Nome da prova</label>
+		                <input
+		                  id="exam-name"
+		                  type="text"
+		                  placeholder="Ex.: Simulado 01 · Redes"
+		                  data-i18n-placeholder="exam.setup.namePlaceholder"
+		                />
+		                <p class="muted" data-i18n="exam.setup.nameNote">
+		                  Ajuda a encontrar a prova depois em “Minhas Provas”.
+		                </p>
+		              </div>
+		              <div class="field">
+		                <label class="toggle-line" for="exam-multi-toggle">
+		                  <input id="exam-multi-toggle" type="checkbox" />
+		                  <span data-i18n="exam.setup.allowMulti">Permitir perguntas com 2 respostas corretas</span>
+	                </label>
+	                <p class="muted" id="exam-multi-note"></p>
+	              </div>
+	              <div class="field">
+	                <label for="exam-time" data-i18n="exam.setup.timeLabel">Tempo de prova (minutos)</label>
+	                <label class="toggle-line" for="exam-time-toggle">
+	                  <input id="exam-time-toggle" type="checkbox" />
+	                  <span data-i18n="exam.setup.timeToggle">Ativar limite de tempo</span>
+	                </label>
+	                <div class="inline">
+	                  <input id="exam-time" type="number" min="1" max="240" value="10" />
+	                  <span class="muted" data-i18n="exam.setup.timeUnit">minutos por prova</span>
+	                </div>
+	                <p class="muted" data-i18n="exam.setup.timeNote">
+	                  Ative para finalizar automaticamente quando o tempo acabar.
+	                </p>
+	              </div>
+	            </div>
+	          </details>
+	        </div>
+	        <button id="exam-start" data-sound="generate" data-i18n="exam.setup.start">Gerar prova</button>
+	        <div class="progress">
+	          <div id="exam-progress-bar" class="progress-bar"></div>
+	        </div>
         <p id="exam-setup-status" class="status"></p>
         <p id="exam-usage-status" class="status"></p>
       </section>

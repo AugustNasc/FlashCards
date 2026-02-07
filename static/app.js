@@ -38,6 +38,10 @@ const cardsPagination = document.getElementById("cards-pagination");
 const cardsPagePrev = document.getElementById("cards-page-prev");
 const cardsPageNext = document.getElementById("cards-page-next");
 const cardsPageInfo = document.getElementById("cards-page-info");
+const examsPagination = document.getElementById("exams-pagination");
+const examsPagePrev = document.getElementById("exams-page-prev");
+const examsPageNext = document.getElementById("exams-page-next");
+const examsPageInfo = document.getElementById("exams-page-info");
 const faqPanel = document.getElementById("faq-panel");
 const openFaqBtn = document.getElementById("open-faq");
 
@@ -67,6 +71,10 @@ const importHelpPanel = document.getElementById("import-help-panel");
 const openImportBtn = document.getElementById("open-import");
 const importPanel = document.getElementById("import-panel");
 const importBackdrop = document.getElementById("import-backdrop");
+const attemptsModal = document.getElementById("attempts-modal");
+const attemptsModalTitle = document.getElementById("attempts-modal-title");
+const attemptsModalBody = document.getElementById("attempts-modal-body");
+const closeAttemptsModalBtn = document.getElementById("close-attempts-modal");
 const goalsStatus = document.getElementById("goals-status");
 const openGoalsBtn = document.getElementById("open-goals");
 const goalsPanel = document.getElementById("goals-panel");
@@ -139,9 +147,13 @@ let importParsed = null;
 let importOverlay = null;
 let cardsCache = [];
 let cardsPage = 1;
-const cardsPageSize = 16;
+const cardsPageSize = 10;
 let shareLinksCache = [];
 const modalStack = [];
+let examsSessionsCache = [];
+let examsPage = 1;
+const examsPageSize = 10;
+let examsTotalPages = 1;
 
 const I18N = {
   pt: {
@@ -351,6 +363,8 @@ const I18N = {
     "goals.selectCollection": "Selecione uma coleção para ver os logs.",
     "goals.updated": "Logs atualizados.",
     "cards.page": "Página {page}/{total}",
+    "exams.pageInfo": "Página 1/1",
+    "exams.page": "Página {page}/{total}",
     "footer.prefix": "© 2026 FlashCards · Projeto open source por AugustNasc ·",
     "footer.link": "Acesse o repositório",
     "confirm.title": "Confirmar ação",
@@ -556,7 +570,7 @@ const I18N = {
     "exams.summary": "Exams: {count} · Correct {correct} · Incorrect {incorrect}",
     "exams.stats.correct": "Correct",
     "exams.stats.incorrect": "Incorrect",
-    "exams.stats.unanswered": "Unanswered",
+    "exams.stats.unanswered": "Pending",
     "exams.name.edit": "Rename exam",
     "exams.name.save": "Save",
     "exams.name.cancel": "Cancel",
@@ -619,6 +633,8 @@ const I18N = {
     "goals.selectCollection": "Select a collection to view logs.",
     "goals.updated": "Logs updated.",
     "cards.page": "Page {page}/{total}",
+    "exams.pageInfo": "Page 1/1",
+    "exams.page": "Page {page}/{total}",
     "footer.prefix": "© 2026 FlashCards · Open source project by AugustNasc ·",
     "footer.link": "View repository",
     "confirm.title": "Confirm action",
@@ -897,6 +913,12 @@ function activateModal(modal, { initialFocus } = {}) {
   const handler = (event) => trapModalFocus(modal, event);
   modal.addEventListener("keydown", handler);
   modal.classList.remove("hidden");
+  try {
+    const scrollbarComp = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+    document.body.style.setProperty("--scrollbar-comp", `${scrollbarComp}px`);
+  } catch (err) {
+    // ignore measurement failures
+  }
   document.body.classList.add("modal-open");
   modalStack.push({ modal, previousActive, handler });
   requestAnimationFrame(() => {
@@ -919,6 +941,7 @@ function deactivateModal(modal) {
   }
   if (!modalStack.length) {
     document.body.classList.remove("modal-open");
+    document.body.style.removeProperty("--scrollbar-comp");
   }
   if (previousActive && typeof previousActive.focus === "function") {
     previousActive.focus();
@@ -932,6 +955,77 @@ function closeTopModal() {
     return true;
   }
   return false;
+}
+
+function closeAttemptsModal() {
+  if (!attemptsModal) return;
+  deactivateModal(attemptsModal);
+  if (attemptsModalBody) {
+    attemptsModalBody.innerHTML = "";
+  }
+}
+
+function openAttemptsModal({ title, rowsHtml, sessionById }) {
+  if (!attemptsModal || !attemptsModalBody || !attemptsModalTitle) return;
+  attemptsModalTitle.textContent = title || t("exams.attemptsTitle", { count: 0 });
+  attemptsModalBody.innerHTML = `
+    <div class="preview-table attempts-modal-table">
+      <table>
+        <thead>
+          <tr>
+            <th>${escapeHtml(t("exams.attempts.col.date"))}</th>
+            <th>${escapeHtml(t("exams.attempts.col.score"))}</th>
+            <th>${escapeHtml(t("exams.attempts.col.time"))}</th>
+            <th>${escapeHtml(t("exams.attempts.col.actions"))}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml || ""}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  activateModal(attemptsModal, { initialFocus: closeAttemptsModalBtn || undefined });
+
+  attemptsModalBody.querySelectorAll(".view-exam-attempt").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const sessionId = btn.dataset.id;
+      const session = sessionById.get(String(sessionId));
+      const result = storeExamViewPayload(session);
+      if (!result.ok) {
+        setStatus(examsStatus, result.error || t("exams.retakeMissing"));
+        setTimeout(() => setStatus(examsStatus, ""), 1800);
+        return;
+      }
+      closeAttemptsModal();
+      window.location.href = "/exam";
+    });
+  });
+
+  attemptsModalBody.querySelectorAll(".delete-exam-attempt").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      playDeleteSound();
+      await fetch(`/api/exam/sessions/${btn.dataset.id}`, { method: "DELETE" });
+      closeAttemptsModal();
+      setTimeout(() => {
+        void loadExamSessions({ silent: true });
+      }, 360);
+    });
+  });
+}
+
+if (closeAttemptsModalBtn) {
+  closeAttemptsModalBtn.addEventListener("click", closeAttemptsModal);
+}
+if (attemptsModal) {
+  attemptsModal.addEventListener("click", (event) => {
+    if (event.target === attemptsModal) {
+      event.stopPropagation();
+      closeAttemptsModal();
+    }
+  });
 }
 
 function isSoundEnabled() {
@@ -1639,8 +1733,10 @@ function buildExamSubtitle({ name, topic, createdAt, durationSec, total }) {
 
 function renderExamSessions(sessions) {
   if (!examsList) return;
+  closeAttemptsModal();
   examsList.innerHTML = "";
   const list = Array.isArray(sessions) ? sessions : [];
+  if (examsPagination) examsPagination.classList.add("hidden");
   if (!list.length) {
     examsList.textContent = t("exams.empty");
     if (clearExamsBtn) clearExamsBtn.disabled = true;
@@ -1649,6 +1745,7 @@ function renderExamSessions(sessions) {
   if (clearExamsBtn) clearExamsBtn.disabled = false;
 
   const sessionById = new Map(list.map((session) => [String(session.id), session]));
+  const attemptsModalPayloads = new Map();
 
   function isUnstartedImportedExam(session) {
     if (!session || typeof session !== "object") return false;
@@ -1801,27 +1898,51 @@ function renderExamSessions(sessions) {
     })
     .sort((a, b) => Number(b.latest.id || 0) - Number(a.latest.id || 0));
 
-  groups.forEach((group, groupIdx) => {
+  examsTotalPages = Math.max(1, Math.ceil(groups.length / examsPageSize));
+  if (examsPage > examsTotalPages) {
+    examsPage = examsTotalPages;
+  }
+  if (examsPage < 1) {
+    examsPage = 1;
+  }
+  const start = (examsPage - 1) * examsPageSize;
+  const pageGroups = groups.slice(start, start + examsPageSize);
+
+  if (examsPagination) {
+    examsPagination.classList.toggle("hidden", groups.length <= examsPageSize);
+  }
+  if (examsPageInfo) {
+    examsPageInfo.textContent = t("exams.page", { page: examsPage, total: examsTotalPages });
+  }
+  if (examsPagePrev) {
+    examsPagePrev.disabled = examsPage <= 1;
+  }
+  if (examsPageNext) {
+    examsPageNext.disabled = examsPage >= examsTotalPages;
+  }
+
+  pageGroups.forEach((group, groupIdx) => {
     const session = group.latest;
     const item = document.createElement("div");
     item.className = "session-item exam-session-card";
-    const unanswered = Math.max(0, Number(session.total || 0) - Number(session.answered || 0));
-    const name = (session.name || "").trim();
-    const topic = (session.topic || "").trim();
-    const dateLabel = new Date(session.created_at).toLocaleString();
-    const subtitleParts = [escapeHtml(dateLabel)];
-    if (topic) subtitleParts.push(escapeHtml(topic));
-    subtitleParts.push(
-      escapeHtml(t("exams.item", { duration: formatExamDuration(session.duration_sec), total: session.total }))
-    );
-    subtitleParts.push(escapeHtml(t("exams.attemptsCount", { count: group.attempts.length })));
-    const subtitlePayload = { dateLabel, subtitleHtml: subtitleParts.join(" · ") };
-    const canView = isViewableExamSession(session);
-    const attemptsPanelId = `exam-attempts-${groupIdx}`;
-    const hasAttemptHistory = group.attempts.length > 1;
-    const attemptsRows = group.attempts
-      .slice()
-      .map((attempt) => {
+	    const unanswered = Math.max(0, Number(session.total || 0) - Number(session.answered || 0));
+	    const name = (session.name || "").trim();
+	    const topic = (session.topic || "").trim();
+	    const collectionName = getCollectionName(session.collection_id);
+	    const dateLabel = new Date(session.created_at).toLocaleString();
+	    const subtitleParts = [escapeHtml(dateLabel)];
+	    if (topic) subtitleParts.push(escapeHtml(topic));
+	    subtitleParts.push(
+	      escapeHtml(t("exams.item", { duration: formatExamDuration(session.duration_sec), total: session.total }))
+	    );
+	    subtitleParts.push(escapeHtml(t("exams.attemptsCount", { count: group.attempts.length })));
+	    const subtitlePayload = { dateLabel, subtitleHtml: subtitleParts.join(" · ") };
+	    const canView = isViewableExamSession(session);
+	    const hasAttemptHistory = group.attempts.length > 1;
+	    const attemptsKey = `attempts-${groupIdx}`;
+	    const attemptsRows = group.attempts
+	      .slice()
+	      .map((attempt) => {
         const attemptDate = new Date(attempt.created_at).toLocaleString();
         const total = Number(attempt.total || 0);
         const correct = Number(attempt.correct || 0);
@@ -1847,53 +1968,40 @@ function renderExamSessions(sessions) {
             </td>
           </tr>
         `;
-      })
-      .join("");
+	      })
+	      .join("");
 
-    item.innerHTML = `
-      <div class="session-top">
-        <div class="session-title-row">
-          <strong class="session-title">${escapeHtml(name || topic || subtitlePayload.dateLabel)}</strong>
-          <div class="inline">
-            ${
-              hasAttemptHistory
-                ? `<button class="ghost icon-btn tiny open-exam-attempts" type="button" aria-label="${escapeHtml(
-                    t("exams.attemptsTitle", { count: group.attempts.length })
-                  )}" aria-expanded="false" aria-controls="${attemptsPanelId}">≡</button>`
-                : ""
-            }
-            <button class="ghost icon-btn tiny edit-exam-name" type="button" data-id="${
-              session.id
-            }" aria-label="${escapeHtml(t("exams.name.edit"))}">✎</button>
-          </div>
-        </div>
-        <div class="muted session-subtitle">${subtitlePayload.subtitleHtml}</div>
-        <div id="${attemptsPanelId}" class="help-panel hidden exam-attempts-panel" role="note" aria-live="polite">
-          <div class="exam-attempts-header">
-            <strong>${escapeHtml(t("exams.attemptsTitle", { count: group.attempts.length }))}</strong>
-            <button class="ghost icon-btn tiny close-exam-attempts" type="button" aria-label="${escapeHtml(
-              t("exams.attempts.close")
-            )}">✕</button>
-          </div>
-          <div class="preview-table" style="margin-top: 10px">
-            <table>
-              <thead>
-                <tr>
-                  <th>${escapeHtml(t("exams.attempts.col.date"))}</th>
-                  <th>${escapeHtml(t("exams.attempts.col.score"))}</th>
-                  <th>${escapeHtml(t("exams.attempts.col.time"))}</th>
-                  <th>${escapeHtml(t("exams.attempts.col.actions"))}</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${attemptsRows}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div class="session-edit hidden">
-          <input class="session-name-input" type="text" maxlength="120" value="${escapeHtml(
-            name
+	    if (hasAttemptHistory) {
+	      attemptsModalPayloads.set(attemptsKey, {
+	        title: t("exams.attemptsTitle", { count: group.attempts.length }),
+	        rowsHtml: attemptsRows,
+	      });
+	    }
+
+		    item.innerHTML = `
+		      <div class="session-top">
+		        <div class="session-title-row">
+		          <strong class="session-title">${escapeHtml(name || topic || subtitlePayload.dateLabel)}</strong>
+		          <div class="inline">
+	            ${
+	              hasAttemptHistory
+	                ? `<button class="ghost icon-btn tiny open-exam-attempts" type="button" data-attempts-key="${attemptsKey}" aria-label="${escapeHtml(
+	                    t("exams.attemptsTitle", { count: group.attempts.length })
+	                  )}">≡</button>`
+	                : ""
+	            }
+		            <button class="ghost icon-btn tiny edit-exam-name" type="button" data-id="${
+		              session.id
+	            }" aria-label="${escapeHtml(t("exams.name.edit"))}">✎</button>
+	          </div>
+	        </div>
+		        <div class="inline">
+		          <span class="card-collection">${escapeHtml(collectionName)}</span>
+		        </div>
+		        <div class="muted session-subtitle">${subtitlePayload.subtitleHtml}</div>
+	        <div class="session-edit hidden">
+	          <input class="session-name-input" type="text" maxlength="120" value="${escapeHtml(
+	            name
           )}" placeholder="${escapeHtml(t("exams.name.placeholder"))}" />
           <div class="session-edit-actions">
             <button class="ghost small save-exam-name" type="button" data-id="${
@@ -2012,10 +2120,10 @@ function renderExamSessions(sessions) {
     });
   });
 
-  examsList.querySelectorAll(".session-name-input").forEach((input) => {
-    input.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        const item = input.closest(".session-item");
+	  examsList.querySelectorAll(".session-name-input").forEach((input) => {
+	    input.addEventListener("keydown", (event) => {
+	      if (event.key === "Escape") {
+	        const item = input.closest(".session-item");
         if (item) closeEditing(item);
         return;
       }
@@ -2024,57 +2132,24 @@ function renderExamSessions(sessions) {
         const saveBtn = item && item.querySelector(".save-exam-name");
         if (saveBtn) saveBtn.click();
       }
-    });
-  });
+	    });
+	  });
 
-  function closeAllAttemptPanels(exceptId = "") {
-    examsList.querySelectorAll(".exam-attempts-panel").forEach((panel) => {
-      if (exceptId && panel.id === exceptId) return;
-      panel.classList.add("hidden");
-    });
-    examsList.querySelectorAll(".open-exam-attempts").forEach((btn) => {
-      if (exceptId && btn.getAttribute("aria-controls") === exceptId) return;
-      btn.setAttribute("aria-expanded", "false");
-    });
-  }
+	  examsList.querySelectorAll(".open-exam-attempts").forEach((btn) => {
+	    btn.addEventListener("click", (event) => {
+	      event.preventDefault();
+	      event.stopPropagation();
+	      const key = btn.dataset.attemptsKey || "";
+	      const payload = attemptsModalPayloads.get(key);
+	      if (!payload) return;
+	      openAttemptsModal({ ...payload, sessionById });
+	    });
+	  });
 
-  examsList.querySelectorAll(".open-exam-attempts").forEach((btn) => {
-    btn.addEventListener("click", (event) => {
-      event.preventDefault();
-      const panelId = btn.getAttribute("aria-controls") || "";
-      const panel = panelId ? document.getElementById(panelId) : null;
-      if (!panel) return;
-      const willOpen = panel.classList.contains("hidden");
-      closeAllAttemptPanels(willOpen ? panelId : "");
-      panel.classList.toggle("hidden", !willOpen);
-      btn.setAttribute("aria-expanded", willOpen ? "true" : "false");
-    });
-  });
-
-  examsList.querySelectorAll(".close-exam-attempts").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      closeAllAttemptPanels("");
-    });
-  });
-
-  examsList.querySelectorAll(".view-exam").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const sessionId = btn.dataset.id;
-      const session = sessionById.get(String(sessionId));
-      const result = storeExamViewPayload(session);
-      if (!result.ok) {
-        setStatus(examsStatus, result.error || t("exams.retakeMissing"));
-        setTimeout(() => setStatus(examsStatus, ""), 1800);
-        return;
-      }
-      window.location.href = "/exam";
-    });
-  });
-
-  examsList.querySelectorAll(".view-exam-attempt").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const sessionId = btn.dataset.id;
-      const session = sessionById.get(String(sessionId));
+	  examsList.querySelectorAll(".view-exam").forEach((btn) => {
+	    btn.addEventListener("click", () => {
+	      const sessionId = btn.dataset.id;
+	      const session = sessionById.get(String(sessionId));
       const result = storeExamViewPayload(session);
       if (!result.ok) {
         setStatus(examsStatus, result.error || t("exams.retakeMissing"));
@@ -2146,17 +2221,6 @@ function renderExamSessions(sessions) {
       }, 360);
     });
   });
-
-  examsList.querySelectorAll(".delete-exam-attempt").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      btn.disabled = true;
-      playDeleteSound();
-      await fetch(`/api/exam/sessions/${btn.dataset.id}`, { method: "DELETE" });
-      setTimeout(() => {
-        void loadExamSessions({ silent: true });
-      }, 360);
-    });
-  });
 }
 
 async function loadExamSessions({ silent = false } = {}) {
@@ -2174,6 +2238,7 @@ async function loadExamSessions({ silent = false } = {}) {
       throw new Error(data.error || "Erro ao carregar provas.");
     }
     const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+    examsSessionsCache = sessions;
     renderExamSessions(sessions);
     const summary = data.summary || {};
     if (summary && (summary.count || 0) > 0) {
@@ -2669,6 +2734,26 @@ if (cardsPageNext) {
       cardsPage += 1;
       renderCardsPage();
       cardsWrapper.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+}
+
+if (examsPagePrev && examsWrapper) {
+  examsPagePrev.addEventListener("click", () => {
+    if (examsPage > 1) {
+      examsPage -= 1;
+      renderExamSessions(examsSessionsCache);
+      examsWrapper.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+}
+
+if (examsPageNext && examsWrapper) {
+  examsPageNext.addEventListener("click", () => {
+    if (examsPage < examsTotalPages) {
+      examsPage += 1;
+      renderExamSessions(examsSessionsCache);
+      examsWrapper.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   });
 }
@@ -3267,6 +3352,7 @@ document.addEventListener("keydown", (event) => {
 collectionSelect.addEventListener("change", () => {
   setActiveCollection(collectionSelect.value);
   cardsPage = 1;
+  examsPage = 1;
   deleteCollectionBtn.disabled = !collectionSelect.value;
   setCardActionsEnabled(!!collectionSelect.value);
   renderMigrateOptions();

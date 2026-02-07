@@ -57,41 +57,48 @@
           <select id="study-collection"></select>
           <p id="study-collection-status" class="status"></p>
         </div>
-        <div class="field" id="difficulty-filter-field">
-          <label for="difficulty-filter" data-i18n="study.setup.difficulty">Nível de dificuldade</label>
-          <select id="difficulty-filter" disabled>
-            <option value="" data-i18n="study.setup.difficultyAll">Todos</option>
-            <option value="easy" data-i18n="study.setup.difficultyEasy">Fácil</option>
-            <option value="hard" data-i18n="study.setup.difficultyHard">Difícil</option>
-          </select>
-          <p class="muted" data-i18n="study.setup.difficultyNote">Disponível após completar todos os cards da coleção.</p>
-        </div>
-        <div class="field">
-          <label for="session-time" data-i18n="study.setup.timeLabel">Tempo de sessão (minutos)</label>
-          <label class="toggle-line" for="session-time-toggle">
-            <input id="session-time-toggle" type="checkbox" />
-            <span data-i18n="study.setup.timeToggle">Ativar limite de tempo</span>
-          </label>
-          <div class="inline">
-            <input id="session-time" type="number" min="1" max="240" value="10" />
-            <span class="muted" data-i18n="study.setup.timeUnit">minutos por sessão</span>
-          </div>
-          <p class="muted" data-i18n="study.setup.timeNote">Ative para encerrar automaticamente quando o tempo acabar.</p>
-        </div>
-        <div class="field">
-          <label class="toggle-line" for="auto-advance-toggle">
-            <input id="auto-advance-toggle" type="checkbox" />
-            <span data-i18n="study.setup.autoAdvance">Passar cards automaticamente</span>
-          </label>
-          <div class="inline">
-            <input id="auto-advance-interval" type="number" min="2" max="120" value="10" />
-            <span class="muted" data-i18n="study.setup.autoAdvanceUnit">segundos por card</span>
-          </div>
-          <p class="muted" data-i18n="study.setup.autoAdvanceNote">Ative para avançar sozinho enquanto a sessão estiver rodando.</p>
-        </div>
-        <button id="start-session" data-i18n="study.setup.start">Iniciar sessão</button>
-        <p id="setup-status" class="status"></p>
-      </section>
+	        <div class="field" id="difficulty-filter-field">
+	          <label for="difficulty-filter" data-i18n="study.setup.difficulty">Nível de dificuldade</label>
+	          <select id="difficulty-filter" disabled>
+	            <option value="" data-i18n="study.setup.difficultyAll">Todos</option>
+	            <option value="easy" data-i18n="study.setup.difficultyEasy">Fácil</option>
+	            <option value="hard" data-i18n="study.setup.difficultyHard">Difícil</option>
+	          </select>
+	          <p class="muted" data-i18n="study.setup.difficultyNote">Disponível após completar todos os cards da coleção.</p>
+	        </div>
+	        <div class="field">
+	          <details class="disclosure">
+	            <summary data-i18n="study.setup.advanced.summary">Configurações adicionais</summary>
+	            <div class="disclosure-body">
+	              <div class="field">
+	                <label for="session-time" data-i18n="study.setup.timeLabel">Tempo de sessão (minutos)</label>
+	                <label class="toggle-line" for="session-time-toggle">
+	                  <input id="session-time-toggle" type="checkbox" />
+	                  <span data-i18n="study.setup.timeToggle">Ativar limite de tempo</span>
+	                </label>
+	                <div class="inline">
+	                  <input id="session-time" type="number" min="1" max="240" value="10" />
+	                  <span class="muted" data-i18n="study.setup.timeUnit">minutos por sessão</span>
+	                </div>
+	                <p class="muted" data-i18n="study.setup.timeNote">Ative para encerrar automaticamente quando o tempo acabar.</p>
+	              </div>
+	              <div class="field">
+	                <label class="toggle-line" for="auto-advance-toggle">
+	                  <input id="auto-advance-toggle" type="checkbox" />
+	                  <span data-i18n="study.setup.autoAdvance">Passar cards automaticamente</span>
+	                </label>
+	                <div class="inline">
+	                  <input id="auto-advance-interval" type="number" min="2" max="120" value="10" />
+	                  <span class="muted" data-i18n="study.setup.autoAdvanceUnit">segundos por card</span>
+	                </div>
+	                <p class="muted" data-i18n="study.setup.autoAdvanceNote">Ative para avançar sozinho enquanto a sessão estiver rodando.</p>
+	              </div>
+	            </div>
+	          </details>
+	        </div>
+	        <button id="start-session" data-i18n="study.setup.start">Iniciar sessão</button>
+	        <p id="setup-status" class="status"></p>
+	      </section>
 
       <section class="study-panel hidden" id="study-session">
         <div class="study-card" id="study-card" role="button" tabindex="0" aria-label="Card de estudo. Toque para mostrar ou ocultar a resposta.">
