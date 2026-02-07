@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Desafio</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body class="study-body">
+    <div class="bg-layer"></div>
+    <div class="topbar">
+      <a class="ghost-link" href="/" rel="noopener" data-i18n="challenge.back">Voltar</a>
+    </div>
+    <header class="study-header">
+      <div>
+        <p class="eyebrow" data-i18n="challenge.eyebrow">Desafio</p>
+        <h1 id="challenge-title" data-i18n="challenge.title">Teste seus conhecimentos</h1>
+        <p class="subhead" data-i18n="challenge.subtitle">Use o desafio para praticar com cards compartilhados.</p>
+      </div>
+      <div class="study-actions">
+        <div class="session-pill">
+          <span data-i18n="challenge.progress">Progresso</span>
+          <strong id="challenge-progress">0/0</strong>
+        </div>
+      </div>
+    </header>
+    <main class="study-layout">
+      <section class="study-panel" id="challenge-panel">
+        <div class="study-card">
+          <h2 id="challenge-question" data-i18n="challenge.loading">Carregando...</h2>
+          <p id="challenge-answer" class="hidden"></p>
+        </div>
+        <div id="challenge-lock" class="field hidden">
+          <label for="challenge-password" data-i18n="challenge.password.label">Senha do desafio</label>
+          <div class="inline">
+            <input id="challenge-password" type="password" placeholder="Digite a senha" data-i18n-placeholder="challenge.password.placeholder" />
+            <button id="challenge-unlock" class="ghost" data-i18n="challenge.unlock">Desbloquear</button>
+          </div>
+          <p id="challenge-lock-status" class="status"></p>
+        </div>
+        <div class="study-controls">
+          <button id="challenge-toggle" class="accent" data-i18n="challenge.showAnswer">Mostrar resposta</button>
+          <div class="study-nav">
+            <button class="ghost nav-btn" id="challenge-prev" data-i18n="challenge.prev">◀ Anterior</button>
+            <button class="ghost nav-btn" id="challenge-next" data-i18n="challenge.next">Próximo ▶</button>
+          </div>
+        </div>
+        <div class="study-rating">
+          <div class="rating-group">
+            <span data-i18n="challenge.result">Resultado</span>
+            <div>
+              <button class="ghost" data-result="correct" data-i18n="challenge.correct">Acertei</button>
+              <button class="ghost" data-result="incorrect" data-i18n="challenge.incorrect">Errei</button>
+            </div>
+          </div>
+        </div>
+        <div class="study-footer">
+          <button id="challenge-finish" class="accent" data-i18n="challenge.finish">Finalizar desafio</button>
+          <p id="challenge-status" class="status"></p>
+        </div>
+      </section>
+      <section class="study-panel report hidden" id="challenge-report">
+        <h2 data-i18n="challenge.report.title">Resultado do desafio</h2>
+        <div class="report-grid">
+          <div class="report-card">
+            <span data-i18n="challenge.report.correct">Acertos</span>
+            <strong id="challenge-correct">0</strong>
+          </div>
+          <div class="report-card">
+            <span data-i18n="challenge.report.incorrect">Erros</span>
+            <strong id="challenge-incorrect">0</strong>
+          </div>
+          <div class="report-card">
+            <span data-i18n="challenge.report.rate">Taxa</span>
+            <strong id="challenge-rate">0%</strong>
+          </div>
+        </div>
+        <button id="challenge-restart" class="ghost" data-i18n="challenge.report.restart">Tentar novamente</button>
+      </section>
+    </main>
+    <script src="/static/challenge.js"></script>
+  </body>
+</html>

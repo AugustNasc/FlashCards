@@ -15,146 +15,269 @@
         <button class="ghost theme-btn" data-theme="sand">Sand</button>
         <button class="ghost theme-btn" data-theme="mint">Mint</button>
       </div>
-      <button class="ghost icon-btn" id="open-settings" aria-label="Configurações">⚙️</button>
+      <div class="topbar-actions">
+        <div class="help-anchor">
+          <button class="ghost token-pill" id="usage-pill" type="button" aria-expanded="false" aria-controls="usage-panel">
+            Tokens: 0 · ≈ $0.00
+          </button>
+          <div id="usage-panel" class="help-panel hidden usage-panel" role="note" aria-live="polite">
+            <div id="usage-panel-body"></div>
+          </div>
+        </div>
+        <button class="ghost" id="open-faq" data-i18n="topbar.help">Ajuda</button>
+        <button class="ghost icon-btn" id="open-settings" aria-label="Configurações">⚙️</button>
+      </div>
     </div>
-    <div id="settings" class="settings floating hidden">
+    <div id="faq-panel" class="faq-panel hidden" role="note" aria-live="polite">
+      <h4 data-i18n="faq.title">Ajuda · Como funciona o Flashcard</h4>
+      <p data-i18n="faq.intro">Flashcards são pares de pergunta e resposta. Você revisa repetidamente para fixar o conteúdo.</p>
+      <ul>
+        <li data-i18n="faq.list.create">Crie cards manualmente ou com IA.</li>
+        <li data-i18n="faq.list.import">Importe CSV/JSON e organize por coleções.</li>
+        <li data-i18n="faq.list.study">Estude marcando acertos/erros e dificuldade.</li>
+        <li data-i18n="faq.list.exam">Use o modo prova para treinar com múltipla escolha e revisar explicações.</li>
+        <li data-i18n="faq.list.share">Use desafios e compartilhe coleções com links.</li>
+        <li data-i18n="faq.list.logs">Acompanhe logs e foco das sessões.</li>
+      </ul>
+    </div>
+    <div id="settings" class="settings floating hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
       <div class="settings-header">
-        <h3>Configurações</h3>
+        <h3 id="settings-title" data-i18n="settings.title">Configurações</h3>
         <button class="ghost icon-btn" id="close-settings" aria-label="Fechar">✕</button>
       </div>
       <div class="field">
-        <label for="api-key">API Key (OpenAI ou Gemini)</label>
-        <input id="api-key" type="password" placeholder="Cole sua chave aqui" />
-        <p class="muted">A chave fica salva no seu navegador.</p>
+        <label for="api-key" data-i18n="settings.api.label">API Key (OpenAI ou Gemini)</label>
+        <input id="api-key" type="password" placeholder="Cole sua chave aqui" data-i18n-placeholder="settings.api.placeholder" />
+        <p class="muted" data-i18n="settings.api.note">A chave fica salva no seu navegador.</p>
       </div>
       <div class="field">
-        <label class="toggle-line" for="sound-toggle">
-          <input id="sound-toggle" type="checkbox" />
-          Sons do app (geral)
-        </label>
-        <p class="muted">Ative para ouvir feedback sonoro nos botões.</p>
+        <label data-i18n="settings.language.label">Idioma</label>
+        <div class="language-toggle" role="group" aria-label="Selecionar idioma">
+          <button class="ghost small lang-btn" data-lang="pt" aria-pressed="false">🇧🇷 Português</button>
+          <button class="ghost small lang-btn" data-lang="en" aria-pressed="false">🇺🇸 English</button>
+        </div>
+        <p class="muted" data-i18n="settings.language.note">Detectado automaticamente pelo navegador, você pode trocar.</p>
       </div>
       <div class="field">
-        <label class="toggle-line" for="bg-sound-toggle">
-          <input id="bg-sound-toggle" type="checkbox" />
-          Som ambiente
-        </label>
-        <p class="muted">Ative para um fundo sonoro suave durante o uso.</p>
-        <div class="range-line">
-          <span class="muted">Volume</span>
-          <input id="bg-sound-volume" type="range" min="0" max="100" value="35" />
+        <button class="settings-toggle" id="sound-settings-toggle" aria-expanded="false" aria-controls="sound-settings-group">
+          <span data-i18n="settings.sound.title">Sons</span>
+          <span class="chevron" aria-hidden="true">▾</span>
+        </button>
+        <div id="sound-settings-group" class="settings-collapsible hidden">
+          <div class="field">
+            <label class="toggle-line" for="sound-toggle">
+              <input id="sound-toggle" type="checkbox" />
+              <span data-i18n="settings.sound.general">Sons do app (geral)</span>
+            </label>
+            <p class="muted" data-i18n="settings.sound.generalNote">Ative para ouvir feedback sonoro nos botões.</p>
+          </div>
+          <div class="field">
+            <label class="toggle-line" for="bg-sound-toggle">
+              <input id="bg-sound-toggle" type="checkbox" />
+              <span data-i18n="settings.sound.ambient">Som ambiente</span>
+            </label>
+            <p class="muted" data-i18n="settings.sound.ambientNote">Ative para um fundo sonoro suave durante o uso.</p>
+            <div class="range-line">
+              <span class="muted" data-i18n="settings.sound.volume">Volume</span>
+              <input id="bg-sound-volume" type="range" min="0" max="100" value="35" />
+            </div>
+          </div>
+          <div class="field">
+            <label class="toggle-line" for="study-sound-toggle">
+              <input id="study-sound-toggle" type="checkbox" />
+              <span data-i18n="settings.sound.study">Som do modo estudo</span>
+            </label>
+            <p class="muted" data-i18n="settings.sound.studyNote">Ative para ouvir o som enquanto estuda.</p>
+            <div class="range-line">
+              <span class="muted" data-i18n="settings.sound.volume">Volume</span>
+              <input id="study-sound-volume" type="range" min="0" max="100" value="40" />
+            </div>
+          </div>
         </div>
       </div>
-      <div class="field">
-        <label class="toggle-line" for="study-sound-toggle">
-          <input id="study-sound-toggle" type="checkbox" />
-          Som do modo study
-        </label>
-        <p class="muted">Ative para ouvir o som enquanto estuda.</p>
-        <div class="range-line">
-          <span class="muted">Volume</span>
-          <input id="study-sound-volume" type="range" min="0" max="100" value="40" />
-        </div>
-      </div>
-      <button id="save-settings">Salvar configurações</button>
-      <p id="settings-status" class="status"></p>
+      <button id="save-settings" data-i18n="settings.save">Salvar configurações</button>
+      <p id="settings-status" class="status" aria-live="polite"></p>
     </div>
     <header class="hero">
       <div>
-        <p class="eyebrow">FLASHCARD MODERNO + IA</p>
-        <h1>Flashcards simples, rápidos e sempre disponíveis.</h1>
-        <p class="subhead">
+        <p class="eyebrow" data-i18n="hero.eyebrow">FLASHCARD MODERNO + IA</p>
+        <h1 data-i18n="hero.title">Flashcards simples, rápidos e sempre disponíveis.</h1>
+        <p class="subhead" data-i18n="hero.subtitle">
           Gere perguntas e respostas em segundos e estude quando quiser, em qualquer dispositivo.
         </p>
       </div>
       <div class="hero-card">
         <div class="stat">
-          <span>Meus Cards</span>
+          <span data-i18n="hero.stats.cards">Meus Cards</span>
           <strong id="card-count">0</strong>
         </div>
         <div class="stat">
-          <span>Foco em estudo</span>
-          <strong id="study-focus">Sem dados</strong>
+          <div class="stat-label">
+            <span data-i18n="hero.stats.focus">Foco em estudo</span>
+            <div class="help-anchor">
+              <button class="ghost icon-btn help-btn tiny" id="focus-help" aria-label="Sobre foco em estudo">?</button>
+              <div id="focus-help-panel" class="help-panel hidden" role="note" aria-live="polite">
+                <strong data-i18n="hero.focusHelp.title">Como funciona</strong>
+                <p data-i18n="hero.focusHelp.text">Indicador baseado nas sessões completas dos últimos 7 dias. Quanto maior a proporção de cards respondidos, maior o foco.</p>
+                <button class="ghost small" id="focus-help-toggle" aria-expanded="false" data-i18n="hero.focusHelp.more">Ver mais</button>
+                <div id="focus-help-details" class="focus-breakdown hidden">
+                  <p class="muted" data-i18n="hero.focusHelp.formula">Cada sessão gera uma razão (respondidas ÷ total). O foco é a média dessas razões nos últimos 7 dias.</p>
+                  <div class="focus-breakdown-grid">
+                    <div class="focus-breakdown-item">
+                      <span data-i18n="hero.focusHelp.period">Período</span>
+                      <strong id="focus-breakdown-period">—</strong>
+                    </div>
+                    <div class="focus-breakdown-item">
+                      <span data-i18n="hero.focusHelp.sessions">Sessões</span>
+                      <strong id="focus-breakdown-sessions">0</strong>
+                    </div>
+                    <div class="focus-breakdown-item">
+                      <span data-i18n="hero.focusHelp.score">Pontuação</span>
+                      <strong id="focus-breakdown-score">0%</strong>
+                    </div>
+                  </div>
+                  <p class="muted" data-i18n="hero.focusHelp.includes">Inclui sessões de estudo e provas (quando você finaliza e salva).</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <strong id="study-focus" data-i18n="hero.focus.none">Sem dados</strong>
         </div>
         <div class="stat meta-goals-row">
-          <span>Logs de estudo</span>
+          <span data-i18n="hero.stats.logs">Logs de estudo</span>
           <div class="help-anchor">
-        <button class="ghost" id="open-goals" data-sound="goal">Ver logs</button>
+        <button class="ghost" id="open-goals" data-sound="goal" data-i18n="hero.logs.button">Ver logs</button>
             <div id="goals-panel" class="help-panel hidden" role="note" aria-live="polite">
-              <strong>Resumo da coleção</strong>
-              <p>Confira as sessões completas, cards resolvidos e tempo total.</p>
+              <strong data-i18n="hero.logs.title">Resumo da coleção</strong>
+              <p data-i18n="hero.logs.text">Confira as sessões completas, cards resolvidos e tempo total.</p>
               <div class="goal-progress">
                 <div class="goal-progress-item">
-                  <span>Sessões completas</span>
+                  <span data-i18n="hero.logs.sessions">Sessões completas</span>
                   <strong id="goal-log-sessions">0</strong>
                 </div>
                 <div class="goal-progress-item">
-                  <span>Cards resolvidos</span>
+                  <span data-i18n="hero.logs.cards">Cards resolvidos</span>
                   <strong id="goal-log-cards">0</strong>
                 </div>
                 <div class="goal-progress-item">
-                  <span>Tempo total</span>
+                  <span data-i18n="hero.logs.time">Tempo total</span>
                   <strong id="goal-log-time">0m</strong>
                 </div>
+                <div class="goal-progress-item">
+                  <span data-i18n="hero.logs.exams">Provas feitas</span>
+                  <strong id="goal-log-exams">0</strong>
+                </div>
+                <div class="goal-progress-item">
+                  <span data-i18n="hero.logs.questions">Questões respondidas</span>
+                  <strong id="goal-log-questions">0</strong>
+                </div>
+                <div class="goal-progress-item">
+                  <span data-i18n="hero.logs.examTime">Tempo em provas</span>
+                  <strong id="goal-log-exam-time">0m</strong>
+                </div>
               </div>
-              <p class="muted">Sessões completas contam apenas quando todos os cards recebem resultado (Acertei ou Errei). Excluir sessões atualiza os números.</p>
+              <p class="muted" data-i18n="hero.logs.note">Sessões completas contam apenas quando todos os cards recebem resultado (Acertei ou Errei). Excluir sessões atualiza os números.</p>
             </div>
           </div>
         </div>
         <p id="goals-status" class="status"></p>
-        <button class="cta-link" id="open-study" data-sound="nav">Abrir modo estudo</button>
+        <div class="inline">
+          <button class="cta-link study" id="open-study" data-sound="nav" data-i18n="hero.cta">Abrir modo estudo</button>
+          <button class="cta-link exam" id="open-exam" data-sound="nav" data-i18n="hero.ctaExam">Abrir modo prova</button>
+        </div>
       </div>
     </header>
+
+    <section id="onboarding" class="onboarding hidden" aria-live="polite">
+      <div class="onboarding-card">
+        <h2 data-i18n="onboarding.title">Primeiros passos</h2>
+        <ol>
+          <li>
+            <strong data-i18n="onboarding.step1.title">Crie uma coleção</strong>
+            <span data-i18n="onboarding.step1.text">para organizar seus estudos.</span>
+          </li>
+          <li>
+            <strong data-i18n="onboarding.step2.title">Adicione cards</strong>
+            <span data-i18n="onboarding.step2.text">manualmente, por importação ou com IA.</span>
+          </li>
+          <li>
+            <strong data-i18n="onboarding.step3.title">Inicie o modo estudo</strong>
+            <span data-i18n="onboarding.step3.text">para revisar e marcar resultados.</span>
+          </li>
+          <li>
+            <strong data-i18n="onboarding.step4.title">Experimente o modo prova</strong>
+            <span data-i18n="onboarding.step4.text">para treinar múltipla escolha (opcional).</span>
+          </li>
+        </ol>
+        <div class="inline">
+          <button class="ghost" id="onboarding-focus-collection" data-i18n="onboarding.action.collection">Criar coleção</button>
+          <button class="ghost" id="onboarding-open-import" data-i18n="onboarding.action.import">Importar cards</button>
+          <button class="ghost" id="onboarding-open-study" data-i18n="onboarding.action.study">Abrir modo estudo</button>
+          <button class="ghost" id="onboarding-open-exam" data-i18n="onboarding.action.exam">Abrir modo prova</button>
+        </div>
+        <p id="onboarding-status" class="muted"></p>
+      </div>
+    </section>
 
     <main class="layout">
       <section class="panel panel-wide collections-panel">
         <div class="panel-header">
-          <h2>Coleções</h2>
+          <h2 data-i18n="collections.title">Coleções</h2>
         </div>
         <div id="collection-warning" class="notice warning hidden" role="status" aria-live="polite">
-          <span>Para começar, crie uma coleção e selecione-a antes de criar ou importar cards.</span>
-          <button class="ghost small" id="focus-collection">Criar coleção</button>
+          <span data-i18n="collections.warning">Selecione uma coleção (não “Visualizar todas”) para criar, importar ou gerar cards.</span>
+          <button class="ghost small" id="focus-collection" data-i18n="collections.warningAction">Criar coleção</button>
         </div>
         <div class="collections">
           <div class="field">
-            <label for="collection-select">Selecionar coleção</label>
+            <label for="collection-select" data-i18n="collections.select">Selecionar coleção</label>
             <select id="collection-select"></select>
-            <div class="inline">
-              <button class="ghost danger" id="delete-collection">Excluir coleção</button>
-            </div>
+            <button class="ghost danger small" id="delete-collection" data-i18n="collections.delete">Excluir coleção</button>
             <p id="collection-completions" class="status"></p>
           </div>
           <div class="field">
-            <label for="migrate-select">Migrar cards para</label>
+            <label for="collection-name" data-i18n="collections.new.label">Nova coleção</label>
             <div class="inline">
-              <select id="migrate-select"></select>
-              <button class="ghost" id="migrate-cards">Migrar</button>
-            </div>
-            <p id="migrate-status" class="status"></p>
-          </div>
-          <div class="field">
-            <label for="collection-name">Nova coleção</label>
-            <div class="inline">
-              <input id="collection-name" type="text" placeholder="Ex.: Segurança" />
-              <button id="create-collection">Criar</button>
+              <input id="collection-name" type="text" placeholder="Ex.: Segurança" data-i18n-placeholder="collections.new.placeholder" />
+              <button id="create-collection" data-i18n="collections.new.create">Criar</button>
             </div>
             <p id="collection-status" class="status"></p>
+          </div>
+          <div class="field">
+            <details class="disclosure">
+              <summary data-i18n="collections.migrate.summary">Migrar cards</summary>
+              <div class="disclosure-body">
+                <label for="migrate-select" data-i18n="collections.migrate.label">Migrar cards para</label>
+                <div class="inline">
+                  <select id="migrate-select"></select>
+                  <button class="ghost" id="migrate-cards" data-i18n="collections.migrate.button">Migrar</button>
+                </div>
+                <p id="migrate-status" class="status"></p>
+              </div>
+            </details>
+          </div>
+          <div class="field">
+            <label data-i18n="collections.share.label">Compartilhar coleção</label>
+            <div class="inline">
+              <button class="ghost" id="open-share-modal" data-i18n="collections.share.button">Abrir compartilhamento</button>
+            </div>
+            <p class="muted" data-i18n="collections.share.note">Crie links de template ou desafio para sua coleção.</p>
           </div>
         </div>
       </section>
 
       <section class="panel compact">
-        <h2>Gerar com IA</h2>
-        <p class="muted">Defina um tema e a quantidade de cards. A IA cria e salva tudo automaticamente.</p>
+        <h2 data-i18n="generate.title">Gerar com IA</h2>
+        <p class="muted" data-i18n="generate.subtitle">Defina um tema e a quantidade de cards. A IA cria e salva tudo automaticamente.</p>
         <div class="field">
-          <label for="topic">Tema</label>
-          <input id="topic" type="text" placeholder="Ex.: Anatomia, História do Brasil, JavaScript" />
+          <label for="topic" data-i18n="generate.topic.label">Tema</label>
+          <input id="topic" type="text" placeholder="Ex.: Anatomia, História do Brasil, JavaScript" data-i18n-placeholder="generate.topic.placeholder" />
         </div>
         <div class="field">
-          <label for="count">Quantidade</label>
+          <label for="count" data-i18n="generate.count.label">Quantidade</label>
           <input id="count" type="number" min="1" max="60" value="5" />
         </div>
-        <button id="generate" data-sound="generate">Gerar cards</button>
+        <button id="generate" data-sound="generate" data-i18n="generate.button">Gerar cards</button>
         <div class="progress">
           <div id="progress-bar" class="progress-bar"></div>
         </div>
@@ -163,81 +286,233 @@
       </section>
 
       <section class="panel compact">
-        <h2>Criar manualmente</h2>
-        <p class="muted">Use quando quiser ajustar algo específico ou adicionar cards rápidos.</p>
+        <h2 data-i18n="manual.title">Criar manualmente</h2>
+        <p class="muted" data-i18n="manual.subtitle">Use quando quiser ajustar algo específico ou adicionar cards rápidos.</p>
         <div class="field">
-          <label for="question">Pergunta</label>
-          <textarea id="question" rows="3" placeholder="Digite a pergunta..."></textarea>
+          <label for="question" data-i18n="manual.question.label">Pergunta</label>
+          <textarea id="question" rows="3" placeholder="Digite a pergunta..." data-i18n-placeholder="manual.question.placeholder"></textarea>
         </div>
         <div class="field">
-          <label for="answer">Resposta</label>
-          <textarea id="answer" rows="3" placeholder="Digite a resposta..."></textarea>
+          <label for="answer" data-i18n="manual.answer.label">Resposta</label>
+          <textarea id="answer" rows="3" placeholder="Digite a resposta..." data-i18n-placeholder="manual.answer.placeholder"></textarea>
         </div>
-        <button id="save">Salvar card</button>
+        <button id="save" data-i18n="manual.save">Salvar card</button>
         <p id="save-status" class="status"></p>
       </section>
 
       <section class="panel panel-wide">
         <div class="panel-header">
-          <h2>Meus Cards</h2>
+          <h2 data-i18n="exams.title">Minhas Provas</h2>
           <div class="panel-actions">
-            <button class="ghost" id="toggle-cards">Esconder respostas</button>
-            <button class="ghost" id="collapse-cards">Expandir</button>
-            <button class="ghost" id="refresh">Atualizar</button>
-            <button class="ghost" id="open-import">Importar cards</button>
+            <button class="ghost" id="collapse-exams" data-i18n="exams.expand">Expandir</button>
+            <button class="ghost" id="refresh-exams" data-i18n="exams.refresh">Atualizar</button>
+            <button class="ghost" id="open-exams-import" data-i18n="exams.import">Importar</button>
+            <select id="exams-download-format" class="ghost">
+              <option value="csv">CSV</option>
+              <option value="xlsx">XLSX</option>
+            </select>
+            <button class="ghost" id="download-exams" data-i18n="exams.download">Baixar</button>
+            <button class="ghost danger" id="clear-exams" data-i18n="exams.clear">Limpar histórico</button>
+          </div>
+          <div id="exams-import-panel" class="help-panel hidden import-panel help-anchor" role="note" aria-live="polite">
+            <div class="field">
+              <label for="exams-import-file" data-i18n="exams.import.file">Arquivo</label>
+              <div class="inline inline-help">
+                <input id="exams-import-file" type="file" accept=".csv,.xlsx,.json" />
+                <button class="ghost icon-btn help-btn" id="exams-import-help" aria-label="Ajuda para importação de provas">?</button>
+              </div>
+	              <div id="exams-import-help-panel" class="help-panel hidden" role="note" aria-live="polite">
+	                <strong data-i18n="exams.import.help.title">Como importar provas</strong>
+	                <p data-i18n="exams.import.help.intro">CSV/XLSX: use o formato gerado em <em>Baixar</em> em “Minhas Provas”.</p>
+	                <p data-i18n="exams.import.help.required">Obrigatório por questão: <em>question</em>, <em>option_1</em>…<em>option_4</em>, <em>correct</em>.</p>
+	                <p data-i18n="exams.import.help.correct">Em <em>correct</em>, use A/B/C/D (ou 0–3 / 1–4). Para duas corretas: <em>A,C</em>.</p>
+	                <p data-i18n="exams.import.help.examId">Use <em>exam_id</em> para separar múltiplas provas no mesmo arquivo.</p>
+	                <p data-i18n="exams.import.help.example">Exemplo (CSV):</p>
+	                <div class="copy-block">
+	                  <div class="copy-row">
+	                    <button class="ghost small copy-snippet" type="button" data-copy-target="exams-import-example-csv" data-i18n="common.copy">Copiar</button>
+	                  </div>
+	                  <pre><code id="exams-import-example-csv">question,option_1,option_2,option_3,option_4,correct,explanation
+	O que é TCP?,Protocolo de transporte,Protocolo de roteamento,Memória RAM,Formato de arquivo,A,TCP é um protocolo de transporte.
+	Qual porta padrão do HTTP?,21,80,443,25,B,HTTP usa a porta 80 por padrão.</code></pre>
+	                </div>
+	                <p data-i18n="exams.import.help.aiTitle">Modelo para IA (copie e cole):</p>
+	                <div class="copy-block">
+	                  <div class="copy-row">
+	                    <button class="ghost small copy-snippet" type="button" data-copy-target="exams-import-prompt" data-i18n="common.copy">Copiar</button>
+	                  </div>
+	                  <pre><code id="exams-import-prompt">Gere uma prova de múltipla escolha em CSV com cabeçalho:
+question,option_1,option_2,option_3,option_4,correct,explanation
+
+Regras:
+- 4 alternativas por questão (option_1..option_4), sem campos vazios
+- correct deve ser A/B/C/D (ou A,C para 2 corretas)
+- explanation curta (1–2 frases) justificando o gabarito
+- Não inclua texto fora do CSV</code></pre>
+	                </div>
+	              </div>
+              <p class="muted" data-i18n="exams.import.note">Importe arquivos gerados em “Baixar” (CSV/XLSX).</p>
+            </div>
+            <button class="ghost" id="import-exams" data-i18n="exams.import.button">Importar</button>
+            <p id="exams-import-status" class="status" aria-live="polite"></p>
+          </div>
+        </div>
+        <div id="exams-wrapper">
+          <div id="exams-list" class="sessions-list"></div>
+        </div>
+        <p id="exams-status" class="status" aria-live="polite"></p>
+      </section>
+
+      <section class="panel panel-wide">
+        <div class="panel-header">
+          <h2 data-i18n="cards.title">Meus Cards</h2>
+          <div class="panel-actions">
+            <button class="ghost" id="toggle-cards" data-i18n="cards.toggleAnswers">Esconder respostas</button>
+            <button class="ghost" id="collapse-cards" data-i18n="cards.expand">Expandir</button>
+            <button class="ghost" id="refresh" data-i18n="cards.refresh">Atualizar</button>
+            <button class="ghost" id="open-import" data-i18n="cards.import">Importar cards</button>
             <select id="download-format" class="ghost">
               <option value="csv">CSV</option>
               <option value="xlsx">XLSX</option>
             </select>
-            <button class="ghost" id="download">Baixar</button>
+            <button class="ghost" id="download" data-i18n="cards.download">Baixar</button>
           </div>
           <div id="import-panel" class="help-panel hidden import-panel help-anchor" role="note" aria-live="polite">
             <div class="field">
-              <label for="import-file">Arquivo</label>
+              <label for="import-file" data-i18n="import.file.label">Arquivo</label>
               <div class="inline inline-help">
                 <input id="import-file" type="file" accept=".csv,.json" />
                 <button class="ghost icon-btn help-btn" id="import-help" aria-label="Ajuda para importação">?</button>
               </div>
-              <div id="import-help-panel" class="help-panel hidden" role="note" aria-live="polite">
-                <strong>Como importar</strong>
-                <p>CSV: precisa ter colunas <em>question</em> e <em>answer</em>. Exemplo:</p>
-                <pre><code>question,answer
-O que é SQL?,Linguagem para bancos relacionais</code></pre>
-                <p>JSON: array de objetos ou objeto com <em>cards</em>:</p>
-                <pre><code>[
-  { "question": "O que é Python?", "answer": "Uma linguagem de programação" }
-]</code></pre>
-                <p>Evite arquivos muito grandes e revise se não há linhas vazias.</p>
-              </div>
+	              <div id="import-help-panel" class="help-panel hidden" role="note" aria-live="polite">
+	                <strong data-i18n="import.help.title">Como importar</strong>
+	                <p data-i18n="import.help.csv">CSV: precisa ter colunas <em>question</em> e <em>answer</em>. Exemplo:</p>
+	                <div class="copy-block">
+	                  <div class="copy-row">
+	                    <button class="ghost small copy-snippet" type="button" data-copy-target="cards-import-example-csv" data-i18n="common.copy">Copiar</button>
+	                  </div>
+	                  <pre><code id="cards-import-example-csv">question,answer
+	O que é SQL?,Linguagem para bancos relacionais</code></pre>
+	                </div>
+	                <p data-i18n="import.help.json">JSON: array de objetos ou objeto com <em>cards</em>:</p>
+	                <div class="copy-block">
+	                  <div class="copy-row">
+	                    <button class="ghost small copy-snippet" type="button" data-copy-target="cards-import-example-json" data-i18n="common.copy">Copiar</button>
+	                  </div>
+	                  <pre><code id="cards-import-example-json">[
+	  { "question": "O que é Python?", "answer": "Uma linguagem de programação" }
+	]</code></pre>
+	                </div>
+	                <p data-i18n="import.help.aiTitle">Modelo para IA (copie e cole):</p>
+	                <div class="copy-block">
+	                  <div class="copy-row">
+	                    <button class="ghost small copy-snippet" type="button" data-copy-target="cards-import-prompt" data-i18n="common.copy">Copiar</button>
+	                  </div>
+	                  <pre><code id="cards-import-prompt">Gere flashcards em CSV com cabeçalho:
+question,answer
+
+Regras:
+- 1 card por linha
+- question e answer obrigatórios (sem campos vazios)
+- Não inclua texto fora do CSV</code></pre>
+	                </div>
+	                <p data-i18n="import.help.map">Após carregar, use o mapeamento para indicar quais colunas são pergunta e resposta.</p>
+	                <p data-i18n="import.help.warn">Evite arquivos muito grandes e revise se não há linhas vazias.</p>
+	              </div>
             </div>
-            <button class="ghost" id="import-cards">Importar</button>
+            <div id="import-preview" class="import-preview hidden">
+              <div class="field">
+                <label data-i18n="import.map.label">Mapear colunas</label>
+                <div class="inline">
+                  <select id="import-map-question"></select>
+                  <select id="import-map-answer"></select>
+                </div>
+                <p id="import-preview-count" class="muted"></p>
+              </div>
+              <div class="preview-table" id="import-preview-table"></div>
+            </div>
+            <button class="ghost" id="import-cards" data-i18n="import.button">Importar</button>
             <p id="import-status" class="status"></p>
           </div>
         </div>
         <div id="cards-wrapper" class="hidden">
           <div id="cards" class="cards"></div>
+          <div id="cards-pagination" class="cards-pagination hidden">
+            <button class="ghost small" id="cards-page-prev">◀</button>
+            <span id="cards-page-info" data-i18n="cards.pageInfo">Página 1/1</span>
+            <button class="ghost small" id="cards-page-next">▶</button>
+          </div>
         </div>
       </section>
 
     </main>
 
     <footer class="site-footer">
-      <span>© 2026 FlashCards · Projeto open source por AugustNasc · <a href="https://github.com/AugustNasc/FlashCards" target="_blank" rel="noopener">Acesse o repositório</a></span>
+      <span>
+        <span data-i18n="footer.prefix">© 2026 FlashCards · Projeto open source por AugustNasc ·</span>
+        <a href="https://github.com/AugustNasc/FlashCards" target="_blank" rel="noopener" data-i18n="footer.link">Acesse o repositório</a>
+      </span>
     </footer>
 
-    <div id="confirm-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div id="confirm-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">
       <div class="modal-card">
         <div class="modal-header">
-          <h3 id="confirm-title">Confirmar ação</h3>
+          <h3 id="confirm-title" data-i18n="confirm.title">Confirmar ação</h3>
         </div>
         <p id="confirm-message" class="muted"></p>
         <div class="modal-actions">
-          <button class="ghost" id="confirm-cancel">Cancelar</button>
-          <button class="accent danger" id="confirm-ok" data-sound="important">Confirmar</button>
+          <button class="ghost" id="confirm-cancel" data-i18n="confirm.cancel">Cancelar</button>
+          <button class="accent danger" id="confirm-ok" data-sound="important" data-i18n="confirm.ok">Confirmar</button>
         </div>
       </div>
     </div>
 
+    <div id="import-backdrop" class="modal-backdrop hidden" aria-hidden="true"></div>
+
+    <div id="share-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="share-modal-title" aria-describedby="share-modal-note">
+      <div class="modal-card wide">
+        <div class="modal-header">
+          <h3 id="share-modal-title" data-i18n="share.title">Compartilhar coleção</h3>
+          <button class="ghost icon-btn" id="close-share-modal" aria-label="Fechar">✕</button>
+        </div>
+        <div class="field">
+          <label data-i18n="share.protection">Proteção</label>
+          <div class="inline">
+            <input id="share-password" type="password" placeholder="Senha (opcional)" data-i18n-placeholder="share.password.placeholder" />
+            <input id="share-max-uses" type="number" min="1" placeholder="Limite de acessos" data-i18n-placeholder="share.maxUses.placeholder" />
+          </div>
+        </div>
+        <div class="field">
+          <label data-i18n="share.generate">Gerar link</label>
+          <div class="inline">
+            <button class="ghost" id="share-template" data-i18n="share.template">Gerar link de template</button>
+            <button class="ghost" id="share-challenge" data-i18n="share.challenge">Gerar link de desafio</button>
+          </div>
+        </div>
+        <div class="field">
+          <label data-i18n="share.link">Link</label>
+          <div class="inline">
+            <input id="share-link" type="text" readonly placeholder="Link gerado aparece aqui" data-i18n-placeholder="share.link.placeholder" />
+            <button class="ghost" id="copy-share-link" disabled data-i18n="share.copy">Copiar</button>
+            <a class="ghost-link disabled" id="open-share-link" target="_blank" rel="noopener" aria-disabled="true" data-i18n="share.open">Abrir</a>
+            <button class="ghost danger" id="delete-share-link" disabled data-i18n="share.delete">Excluir link</button>
+          </div>
+        </div>
+        <div class="field">
+          <label data-i18n="share.list.label">Links da coleção</label>
+          <div class="share-links-toolbar">
+            <button class="ghost small" id="share-links-refresh" data-i18n="share.list.refresh">Atualizar</button>
+            <button class="ghost danger small" id="share-links-revoke" disabled data-i18n="share.list.clear">Limpar tudo</button>
+          </div>
+          <div id="share-links-list" class="share-links-list"></div>
+          <p id="share-links-status" class="status" aria-live="polite"></p>
+        </div>
+        <p id="share-status" class="status"></p>
+        <p class="muted" id="share-modal-note" data-i18n="share.note">Links de desafio expiram em 20 minutos e são desativados ao finalizar o desafio.</p>
+      </div>
+    </div>
+
+    <script src="/static/usage.js"></script>
     <script src="/static/app.js"></script>
   </body>
 </html>

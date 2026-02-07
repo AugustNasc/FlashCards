@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Modo Prova</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body class="study-body">
+    <div class="bg-layer"></div>
+    <div class="topbar">
+      <div class="theme-switch">
+        <button class="ghost theme-btn" data-theme="light">Light</button>
+        <button class="ghost theme-btn" data-theme="dark">Dark</button>
+        <button class="ghost theme-btn" data-theme="sand">Sand</button>
+        <button class="ghost theme-btn" data-theme="mint">Mint</button>
+      </div>
+      <div class="help-anchor">
+        <button class="ghost token-pill" id="usage-pill" type="button" aria-expanded="false" aria-controls="usage-panel">
+          Tokens: 0 · ≈ $0.00
+        </button>
+        <div id="usage-panel" class="help-panel hidden usage-panel" role="note" aria-live="polite">
+          <div id="usage-panel-body"></div>
+        </div>
+      </div>
+      <a class="ghost-link" id="exam-back" data-sound="nav" href="/" data-i18n="exam.back">Voltar</a>
+    </div>
+
+    <header class="study-header">
+      <div>
+        <p class="eyebrow" data-i18n="exam.header.eyebrow">Modo prova</p>
+        <h1 data-i18n="exam.header.title">Treine com múltipla escolha.</h1>
+        <p class="subhead" data-i18n="exam.header.subtitle">
+          Gere uma prova com IA (4 alternativas). Algumas perguntas podem ter 2 respostas corretas.
+        </p>
+      </div>
+      <div class="study-actions">
+        <div class="session-pill hidden" id="exam-timer-pill">
+          <span data-i18n="exam.timer">Tempo</span>
+          <strong id="exam-timer">00:00</strong>
+        </div>
+        <div class="session-pill hidden" id="exam-progress-pill">
+          <span data-i18n="exam.progress">Progresso</span>
+          <strong id="exam-progress">0/0</strong>
+        </div>
+        <div class="session-pill hidden" id="exam-score-pill">
+          <span data-i18n="exam.score">Respondidas</span>
+          <strong id="exam-score">0</strong>
+        </div>
+      </div>
+    </header>
+
+    <main class="study-layout">
+      <section class="study-panel" id="exam-setup">
+        <h2 data-i18n="exam.setup.title">Configurar prova</h2>
+        <p class="muted" data-i18n="exam.setup.subtitle">
+          Escolha um tema (ou uma coleção) e gere as perguntas.
+        </p>
+        <div id="exam-missing-key" class="notice warning hidden" role="status" aria-live="polite">
+          <span data-i18n="exam.setup.missingKey">
+            Defina sua API Key na página inicial (Configurações) antes de gerar uma prova.
+          </span>
+        </div>
+        <div class="field">
+          <label for="exam-collection" data-i18n="exam.setup.collection">Coleção (opcional)</label>
+          <select id="exam-collection"></select>
+          <p id="exam-collection-status" class="status"></p>
+        </div>
+        <div class="field">
+          <label for="exam-topic" data-i18n="exam.setup.topic">Tema / assunto (opcional)</label>
+          <input
+            id="exam-topic"
+            type="text"
+            placeholder="Ex.: Redes, Direito, História..."
+            data-i18n-placeholder="exam.setup.topicPlaceholder"
+          />
+          <p class="muted" data-i18n="exam.setup.topicNote">
+            Se escolher uma coleção, o conteúdo dela será usado como referência.
+          </p>
+        </div>
+        <div class="field">
+          <label for="exam-name" data-i18n="exam.setup.name">Nome da prova (opcional)</label>
+          <input
+            id="exam-name"
+            type="text"
+            placeholder="Ex.: Simulado 01 · Redes"
+            data-i18n-placeholder="exam.setup.namePlaceholder"
+          />
+          <p class="muted" data-i18n="exam.setup.nameNote">
+            Ajuda a encontrar a prova depois em “Minhas Provas”.
+          </p>
+        </div>
+        <div class="field">
+          <label for="exam-count" data-i18n="exam.setup.count">Quantidade de perguntas</label>
+          <div class="inline">
+            <input id="exam-count" type="number" min="1" max="40" value="10" />
+            <span class="muted" data-i18n="exam.setup.countUnit">perguntas</span>
+          </div>
+        </div>
+        <div class="field">
+          <label class="toggle-line" for="exam-multi-toggle">
+            <input id="exam-multi-toggle" type="checkbox" />
+            <span data-i18n="exam.setup.allowMulti">Permitir perguntas com 2 respostas corretas</span>
+          </label>
+          <p class="muted" data-i18n="exam.setup.allowMultiNote">
+            Quando ativado, parte das questões exigirá marcar 2 alternativas.
+          </p>
+        </div>
+        <div class="field">
+          <label for="exam-time" data-i18n="exam.setup.timeLabel">Tempo de prova (minutos)</label>
+          <label class="toggle-line" for="exam-time-toggle">
+            <input id="exam-time-toggle" type="checkbox" />
+            <span data-i18n="exam.setup.timeToggle">Ativar limite de tempo</span>
+          </label>
+          <div class="inline">
+            <input id="exam-time" type="number" min="1" max="240" value="10" />
+            <span class="muted" data-i18n="exam.setup.timeUnit">minutos por prova</span>
+          </div>
+          <p class="muted" data-i18n="exam.setup.timeNote">
+            Ative para finalizar automaticamente quando o tempo acabar.
+          </p>
+        </div>
+        <button id="exam-start" data-sound="generate" data-i18n="exam.setup.start">Gerar prova</button>
+        <div class="progress">
+          <div id="exam-progress-bar" class="progress-bar"></div>
+        </div>
+        <p id="exam-setup-status" class="status"></p>
+        <p id="exam-usage-status" class="status"></p>
+      </section>
+
+      <section class="study-panel hidden" id="exam-session">
+        <div class="study-card" id="exam-card" aria-disabled="true">
+          <h2 id="exam-question" data-i18n="exam.loading">Carregando...</h2>
+          <p id="exam-hint" class="muted"></p>
+        </div>
+
+        <div id="exam-options" class="exam-options" aria-live="polite"></div>
+
+        <div class="study-controls">
+          <div class="study-nav">
+            <button class="ghost nav-btn" id="exam-prev" data-sound="nav" data-i18n="exam.prev">
+              ◀ Anterior
+            </button>
+            <button class="ghost nav-btn" id="exam-next" data-sound="nav" data-i18n="exam.next">
+              Próximo ▶
+            </button>
+          </div>
+        </div>
+
+        <div class="study-footer">
+          <button id="exam-finish" class="accent" data-sound="important" data-i18n="exam.finish">
+            Finalizar prova
+          </button>
+          <button id="exam-restart" class="ghost" data-i18n="exam.restart">Nova prova</button>
+          <p id="exam-status" class="status" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section class="study-panel report hidden" id="exam-report">
+        <h2 data-i18n="exam.report.title">Resultado</h2>
+        <p id="exam-report-meta" class="muted hidden"></p>
+        <div class="report-grid">
+          <button class="report-card report-filter" id="exam-filter-correct" type="button" aria-pressed="false">
+            <span data-i18n="exam.report.correct">Acertos</span>
+            <strong id="exam-report-correct">0</strong>
+          </button>
+          <button class="report-card report-filter" id="exam-filter-incorrect" type="button" aria-pressed="false">
+            <span data-i18n="exam.report.incorrect">Erros</span>
+            <strong id="exam-report-incorrect">0</strong>
+          </button>
+          <button class="report-card report-filter" id="exam-filter-all" type="button" aria-pressed="true">
+            <span data-i18n="exam.report.rate">Taxa</span>
+            <strong id="exam-report-rate">0%</strong>
+          </button>
+        </div>
+
+        <div class="report-section">
+          <h3 data-i18n="exam.report.reviewTitle">Revisão</h3>
+          <div id="exam-review" class="exam-review"></div>
+        </div>
+
+        <div class="inline">
+          <button id="exam-retake" class="accent" data-sound="nav" data-i18n="exam.report.retake">Fazer novamente</button>
+          <button id="exam-back-setup" class="ghost" data-i18n="exam.report.back">Gerar outra prova</button>
+        </div>
+      </section>
+
+      <section class="study-panel sessions" id="exam-sessions">
+        <div class="panel-header">
+          <h2 data-i18n="exam.sessions.title">Histórico de provas</h2>
+          <div class="panel-actions">
+            <button class="ghost" id="exam-refresh-sessions" data-i18n="exam.sessions.refresh">Atualizar</button>
+            <button class="ghost danger" id="exam-clear-sessions" data-i18n="exam.sessions.clear">Limpar histórico</button>
+          </div>
+        </div>
+        <div id="exam-sessions-list" class="sessions-list"></div>
+        <p id="exam-sessions-status" class="status" aria-live="polite"></p>
+      </section>
+    </main>
+
+    <script src="/static/usage.js"></script>
+    <script src="/static/exam.js"></script>
+  </body>
+</html>

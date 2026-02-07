@@ -21,9 +21,31 @@ Todas as mudanças relevantes são documentadas aqui.
 - Contador de **coleção concluída** e logs de estudo por coleção (sessões completas, cards resolvidos, tempo).
 - Indicador de **Foco em estudo** baseado nas sessões dos últimos 7 dias.
 
+### Compartilhamento e importação
+- Links de **template** e **desafio** para compartilhar coleções.
+- Páginas dedicadas para consumir template ou realizar desafio.
+- Importação com **pré-visualização** e **mapeamento de colunas**.
+- Bloco “Primeiros passos” quando não há coleções/cards.
+- Proteções nos links: senha opcional, limite de acessos, expiração do desafio e revogação.
+
 ### UI e textos
 - Ajuste de headlines e descrições.
 - Remoção de referência a “Anki”.
+
+## 2026-02-07
+
+### Modo prova
+- Revisão passa a exibir as **alternativas** e marcações (correta/selecionada).
+- Filtro no resultado: clique em **Acertos** ou **Erros** para ver apenas as questões correspondentes.
+- Visualização de provas no histórico é permitida **apenas após concluir** (com respostas registradas).
+
+### Minhas Provas (histórico)
+- Tentativas de uma mesma prova são **agrupadas em um único card** (reduz poluição visual).
+- Lista de tentativas acessível pelo botão `≡`, com **visualizar** e **excluir** por tentativa.
+
+### Importação (ajuda)
+- Ajuda (`?`) de importação de **Provas** e **Cards** com botões de **copiar** exemplos e **modelo para IA**.
+- Layout do painel de ajuda ajustado para ficar mais legível no mobile e no desktop.
 
 ## 2026-01-30
 

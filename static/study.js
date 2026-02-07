@@ -31,6 +31,7 @@ const studyAlertOk = document.getElementById("study-alert-ok");
 const studyAlertClose = document.getElementById("study-alert-close");
 const studyBackLink = document.getElementById("study-back");
 const sessionPills = document.querySelectorAll(".session-pill");
+const studyCard = document.getElementById("study-card");
 
 const themeButtons = document.querySelectorAll(".theme-btn");
 
@@ -58,6 +59,235 @@ let studyFilter = null;
 let studyLfo = null;
 let studyGain = null;
 let studyStartPending = false;
+let touchStartX = 0;
+let touchStartY = 0;
+let touchStartTime = 0;
+let touchMoved = false;
+let lastStudyFocus = null;
+let studyModalHandler = null;
+
+const I18N = {
+  pt: {
+    "study.pageTitle": "Modo Estudo",
+    "study.back": "Voltar",
+    "study.header.eyebrow": "Modo estudo",
+    "study.header.title": "Foco total nos cards.",
+    "study.header.subtitle":
+      "Marque acertos/erros e a dificuldade. No fim você recebe um relatório completo.",
+    "study.session.time": "Tempo",
+    "study.session.progress": "Progresso",
+    "study.setup.title": "Configurar sessão",
+    "study.setup.subtitle": "Escolha a coleção, defina tempo máximo (opcional) e inicie a sessão.",
+    "study.setup.locked": "Você precisa ter uma coleção criada para acessar o modo estudo.",
+    "study.setup.collection": "Coleção",
+    "study.setup.difficulty": "Nível de dificuldade",
+    "study.setup.difficultyAll": "Todos",
+    "study.setup.difficultyEasy": "Fácil",
+    "study.setup.difficultyHard": "Difícil",
+    "study.setup.difficultyNote": "Disponível após completar todos os cards da coleção.",
+    "study.setup.timeLabel": "Tempo de sessão (minutos)",
+    "study.setup.timeToggle": "Ativar limite de tempo",
+    "study.setup.timeUnit": "minutos por sessão",
+    "study.setup.timeNote": "Ative para encerrar automaticamente quando o tempo acabar.",
+    "study.setup.autoAdvance": "Passar cards automaticamente",
+    "study.setup.autoAdvanceUnit": "segundos por card",
+    "study.setup.autoAdvanceNote": "Ative para avançar sozinho enquanto a sessão estiver rodando.",
+    "study.setup.start": "Iniciar sessão",
+    "study.session.showAnswer": "Mostrar resposta",
+    "study.session.hideAnswer": "Ocultar resposta",
+    "study.session.prev": "◀ Anterior",
+    "study.session.next": "Próximo ▶",
+    "study.session.random": "↻ Aleatório",
+    "study.session.result": "Resultado",
+    "study.session.correct": "Acertei",
+    "study.session.incorrect": "Errei",
+    "study.session.difficulty": "Dificuldade",
+    "study.session.easy": "Fácil",
+    "study.session.hard": "Difícil",
+    "study.session.finish": "Finalizar sessão",
+    "study.session.restart": "Começar nova Sessão",
+    "study.report.title": "Relatório final",
+    "study.report.correct": "Acertos",
+    "study.report.incorrect": "Erros",
+    "study.report.easy": "Fáceis",
+    "study.report.hard": "Difíceis",
+    "study.report.easyList": "Cards fáceis",
+    "study.report.hardList": "Cards difíceis",
+    "study.report.wrongList": "Erros",
+    "study.report.recommendation": "Recomendação",
+    "study.sessions.title": "Sessões salvas",
+    "study.sessions.refresh": "Atualizar",
+    "study.sessions.item": "Tempo {duration} · {total} cards",
+    "study.sessions.delete": "Excluir",
+    "study.alert.title": "Atenção",
+    "study.alert.ok": "Entendi",
+    "study.loading": "Carregando...",
+    "study.card.aria": "Card de estudo. Toque para mostrar ou ocultar a resposta.",
+    "study.status.noCards": "Nenhum card encontrado.",
+    "study.status.noCardsHint": "Crie ou gere cards antes de estudar.",
+    "study.status.allAnswered": "Todos os cards já foram respondidos.",
+    "study.status.sessionFinished": "Sessão finalizada.",
+    "study.status.timeFinished": "Tempo finalizado. Sessão concluída.",
+    "study.status.readyNext": "Pronto para nova sessão.",
+    "study.status.finishCurrent": "Finalize a sessão atual antes de começar uma nova.",
+    "study.status.selectCollection": "Selecione uma coleção para iniciar.",
+    "study.status.collectionEmpty": "Esta coleção ainda não possui cards.",
+    "study.status.noEasy": "Não há cards fáceis nesta coleção.",
+    "study.status.noHard": "Não há cards difíceis nesta coleção.",
+    "study.status.noFiltered": "Nenhum card encontrado com esse filtro.",
+    "study.status.sessionsEmpty": "Nenhuma sessão salva ainda.",
+    "study.reco.keep": "Continue revisando diariamente para consolidar a memória.",
+    "study.reco.few": "Você tem poucos cards. Gere novos temas para enriquecer o baralho.",
+    "study.reco.errors": "Muitos erros: gere novos cards focados nos temas que você errou.",
+    "study.reco.hard": "Muitos cards difíceis: gere versões mais simples ou divida os tópicos.",
+    "study.reco.easy": "A maioria está fácil. Gere novos cards para aumentar o desafio.",
+  },
+  en: {
+    "study.pageTitle": "Study Mode",
+    "study.back": "Back",
+    "study.header.eyebrow": "Study mode",
+    "study.header.title": "Total focus on your cards.",
+    "study.header.subtitle":
+      "Mark correct/incorrect and difficulty. At the end you get a full report.",
+    "study.session.time": "Time",
+    "study.session.progress": "Progress",
+    "study.setup.title": "Set up session",
+    "study.setup.subtitle": "Choose a collection, set a max time (optional), and start the session.",
+    "study.setup.locked": "You need at least one collection to access study mode.",
+    "study.setup.collection": "Collection",
+    "study.setup.difficulty": "Difficulty level",
+    "study.setup.difficultyAll": "All",
+    "study.setup.difficultyEasy": "Easy",
+    "study.setup.difficultyHard": "Hard",
+    "study.setup.difficultyNote": "Available after completing all cards in the collection.",
+    "study.setup.timeLabel": "Session time (minutes)",
+    "study.setup.timeToggle": "Enable time limit",
+    "study.setup.timeUnit": "minutes per session",
+    "study.setup.timeNote": "Enable to end automatically when time runs out.",
+    "study.setup.autoAdvance": "Auto-advance cards",
+    "study.setup.autoAdvanceUnit": "seconds per card",
+    "study.setup.autoAdvanceNote": "Enable to advance automatically while the session runs.",
+    "study.setup.start": "Start session",
+    "study.session.showAnswer": "Show answer",
+    "study.session.hideAnswer": "Hide answer",
+    "study.session.prev": "◀ Previous",
+    "study.session.next": "Next ▶",
+    "study.session.random": "↻ Random",
+    "study.session.result": "Result",
+    "study.session.correct": "Correct",
+    "study.session.incorrect": "Incorrect",
+    "study.session.difficulty": "Difficulty",
+    "study.session.easy": "Easy",
+    "study.session.hard": "Hard",
+    "study.session.finish": "Finish session",
+    "study.session.restart": "Start new session",
+    "study.report.title": "Final report",
+    "study.report.correct": "Correct",
+    "study.report.incorrect": "Incorrect",
+    "study.report.easy": "Easy",
+    "study.report.hard": "Hard",
+    "study.report.easyList": "Easy cards",
+    "study.report.hardList": "Hard cards",
+    "study.report.wrongList": "Incorrect",
+    "study.report.recommendation": "Recommendation",
+    "study.sessions.title": "Saved sessions",
+    "study.sessions.refresh": "Refresh",
+    "study.sessions.item": "Time {duration} · {total} cards",
+    "study.sessions.delete": "Delete",
+    "study.alert.title": "Attention",
+    "study.alert.ok": "Got it",
+    "study.loading": "Loading...",
+    "study.card.aria": "Study card. Tap to show or hide the answer.",
+    "study.status.noCards": "No cards found.",
+    "study.status.noCardsHint": "Create or generate cards before studying.",
+    "study.status.allAnswered": "All cards have been answered.",
+    "study.status.sessionFinished": "Session finished.",
+    "study.status.timeFinished": "Time is up. Session completed.",
+    "study.status.readyNext": "Ready for a new session.",
+    "study.status.finishCurrent": "Finish the current session before starting a new one.",
+    "study.status.selectCollection": "Select a collection to start.",
+    "study.status.collectionEmpty": "This collection has no cards yet.",
+    "study.status.noEasy": "There are no easy cards in this collection.",
+    "study.status.noHard": "There are no hard cards in this collection.",
+    "study.status.noFiltered": "No cards found with this filter.",
+    "study.status.sessionsEmpty": "No saved sessions yet.",
+    "study.reco.keep": "Keep reviewing daily to consolidate memory.",
+    "study.reco.few": "You have few cards. Generate new topics to enrich the deck.",
+    "study.reco.errors": "Many errors: generate new cards focused on what you missed.",
+    "study.reco.hard": "Many hard cards: create simpler versions or split topics.",
+    "study.reco.easy": "Most are easy. Generate new cards to increase the challenge.",
+  },
+};
+
+let currentLanguage = "pt";
+
+function detectLanguage() {
+  const stored = localStorage.getItem("language");
+  if (stored) return stored;
+  const browserLang =
+    (navigator.languages && navigator.languages[0]) || navigator.language || "pt";
+  return browserLang.toLowerCase().startsWith("en") ? "en" : "pt";
+}
+
+function formatText(text, vars = {}) {
+  return Object.entries(vars).reduce(
+    (acc, [key, value]) => acc.replaceAll(`{${key}}`, String(value)),
+    text
+  );
+}
+
+function t(key, vars) {
+  const dict = I18N[currentLanguage] || I18N.pt;
+  const base = dict[key] || I18N.pt[key] || "";
+  return vars ? formatText(base, vars) : base;
+}
+
+function applyTranslations() {
+  const dict = I18N[currentLanguage] || I18N.pt;
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    const key = el.dataset.i18n;
+    if (!key) return;
+    const value = dict[key];
+    if (typeof value === "string") {
+      el.textContent = value;
+    }
+  });
+  document.title = t("study.pageTitle");
+  if (studyCard) {
+    studyCard.setAttribute("aria-label", t("study.card.aria"));
+  }
+}
+
+function setLanguage(lang) {
+  currentLanguage = lang === "en" ? "en" : "pt";
+  document.documentElement.lang = currentLanguage === "en" ? "en" : "pt-BR";
+  applyTranslations();
+}
+
+const focusableSelector =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function getFocusableElements(container) {
+  if (!container) return [];
+  return Array.from(container.querySelectorAll(focusableSelector)).filter(
+    (el) => !el.hasAttribute("disabled") && !el.getAttribute("aria-hidden")
+  );
+}
+
+function trapStudyModalFocus(event) {
+  if (event.key !== "Tab") return;
+  const focusable = getFocusableElements(studyAlert);
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
 
 function shouldLockStudyScroll() {
   return window.matchMedia("(max-width: 980px)").matches;
@@ -68,6 +298,9 @@ function focusStudySession() {
   requestAnimationFrame(() => {
     const top = studySession.getBoundingClientRect().top + window.scrollY - 16;
     window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    if (studyCard && typeof studyCard.focus === "function") {
+      studyCard.focus();
+    }
   });
 }
 
@@ -357,6 +590,22 @@ function playTimeUpSound() {
   }
 }
 
+function handleStudySwipe(direction) {
+  if (!sessionActive || !cards.length) return;
+  if (direction === "left") {
+    goTo(currentIndex + 1);
+    return;
+  }
+  if (direction === "right") {
+    goTo(currentIndex - 1);
+  }
+}
+
+function handleStudyTap() {
+  if (!sessionActive || !cards.length) return;
+  toggleAnswer();
+}
+
 document.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
@@ -393,11 +642,30 @@ document.addEventListener("visibilitychange", () => {
 
 function openStudyAlert(message) {
   studyAlertMessage.textContent = message;
+  if (!studyAlert.classList.contains("hidden")) return;
+  lastStudyFocus =
+    document.activeElement instanceof HTMLElement ? document.activeElement : null;
   studyAlert.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+  studyModalHandler = (event) => trapStudyModalFocus(event);
+  studyAlert.addEventListener("keydown", studyModalHandler);
+  requestAnimationFrame(() => {
+    if (studyAlertOk && typeof studyAlertOk.focus === "function") {
+      studyAlertOk.focus();
+    }
+  });
 }
 
 function closeStudyAlert() {
   studyAlert.classList.add("hidden");
+  if (studyModalHandler) {
+    studyAlert.removeEventListener("keydown", studyModalHandler);
+    studyModalHandler = null;
+  }
+  document.body.classList.remove("modal-open");
+  if (lastStudyFocus && typeof lastStudyFocus.focus === "function") {
+    lastStudyFocus.focus();
+  }
 }
 
 function startAutoAdvance() {
@@ -419,7 +687,9 @@ function loadTheme() {
   const theme = localStorage.getItem("theme") || "light";
   document.body.dataset.theme = theme;
   themeButtons.forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.theme === theme);
+    const isActive = btn.dataset.theme === theme;
+    btn.classList.toggle("active", isActive);
+    btn.setAttribute("aria-pressed", String(isActive));
   });
 }
 
@@ -463,17 +733,21 @@ function getCurrentRating() {
 function setActiveButtons() {
   const rating = getCurrentRating();
   resultButtons.forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.result === rating.result);
+    const isActive = btn.dataset.result === rating.result;
+    btn.classList.toggle("active", isActive);
+    btn.setAttribute("aria-pressed", String(isActive));
   });
   difficultyButtons.forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.difficulty === rating.difficulty);
+    const isActive = btn.dataset.difficulty === rating.difficulty;
+    btn.classList.toggle("active", isActive);
+    btn.setAttribute("aria-pressed", String(isActive));
   });
 }
 
 function renderCard() {
   if (!cards.length) {
-    questionEl.textContent = "Nenhum card encontrado.";
-    answerEl.textContent = "Crie ou gere cards antes de estudar.";
+    questionEl.textContent = t("study.status.noCards");
+    answerEl.textContent = t("study.status.noCardsHint");
     answerEl.classList.remove("hidden");
     toggleAnswerBtn.disabled = true;
     prevBtn.disabled = true;
@@ -482,26 +756,41 @@ function renderCard() {
     continueBtn.disabled = true;
     progressEl.textContent = "0/0";
     stopTimer();
+    if (studyCard) {
+      studyCard.setAttribute("aria-disabled", "true");
+    }
     return;
   }
 
   const card = cards[currentIndex];
+  if (studyCard) {
+    studyCard.setAttribute("aria-disabled", "false");
+  }
   progressEl.textContent = `${currentIndex + 1}/${cards.length}`;
   questionEl.innerHTML = escapeHtml(card.question);
   answerEl.innerHTML = escapeHtml(card.answer);
 
   if (showAnswer) {
     answerEl.classList.remove("hidden");
-    toggleAnswerBtn.textContent = "Ocultar resposta";
+    toggleAnswerBtn.textContent = t("study.session.hideAnswer");
   } else {
     answerEl.classList.add("hidden");
-    toggleAnswerBtn.textContent = "Mostrar resposta";
+    toggleAnswerBtn.textContent = t("study.session.showAnswer");
+  }
+  toggleAnswerBtn.setAttribute("aria-expanded", String(showAnswer));
+  if (studyCard) {
+    studyCard.setAttribute("aria-pressed", String(showAnswer));
   }
 
   prevBtn.disabled = currentIndex === 0;
   nextBtn.disabled = currentIndex === cards.length - 1;
 
   setActiveButtons();
+}
+
+function toggleAnswer() {
+  showAnswer = !showAnswer;
+  renderCard();
 }
 
 function goTo(index) {
@@ -518,7 +807,7 @@ function goToRandomCard() {
     .map(({ index }) => index);
 
   if (!availableIndexes.length) {
-    setStatus("Todos os cards já foram respondidos.");
+    setStatus(t("study.status.allAnswered"));
     return;
   }
 
@@ -563,15 +852,15 @@ function buildReport() {
   const hardRatio = totalRated ? hard / cards.length : 0;
   const incorrectRatio = totalRated ? incorrect / totalRated : 0;
 
-  let text = "Continue revisando diariamente para consolidar a memória.";
+  let text = t("study.reco.keep");
   if (cards.length < 10) {
-    text = "Você tem poucos cards. Gere novos temas para enriquecer o baralho.";
+    text = t("study.reco.few");
   } else if (incorrectRatio >= 0.4) {
-    text = "Muitos erros: gere novos cards focados nos temas que você errou.";
+    text = t("study.reco.errors");
   } else if (hardRatio >= 0.4) {
-    text = "Muitos cards difíceis: gere versões mais simples ou divida os tópicos.";
+    text = t("study.reco.hard");
   } else if (easy >= cards.length * 0.7) {
-    text = "A maioria está fácil. Gere novos cards para aumentar o desafio.";
+    text = t("study.reco.easy");
   }
 
   recommendation.textContent = text;
@@ -629,7 +918,7 @@ function applyDifficultyAvailability() {
   difficultyReady = !!(selected && selected.difficulty_ready);
   if (!selectedId) {
     difficultyFilterSelect.disabled = true;
-    setCollectionStatus("Selecione uma coleção para iniciar.");
+    setCollectionStatus(t("study.status.selectCollection"));
     return;
   }
   setCollectionStatus("");
@@ -735,7 +1024,7 @@ function buildSessionPayload(durationSec) {
 function renderSessions(sessions) {
   sessionsList.innerHTML = "";
   if (!sessions.length) {
-    sessionsList.textContent = "Nenhuma sessão salva ainda.";
+    sessionsList.textContent = t("study.status.sessionsEmpty");
     return;
   }
   sessions.forEach((session) => {
@@ -744,14 +1033,19 @@ function renderSessions(sessions) {
     item.innerHTML = `
       <div>
         <strong>${new Date(session.created_at).toLocaleString()}</strong>
-        <div class="muted">Tempo ${formatDuration(session.duration_sec)} · ${session.total} cards</div>
+        <div class="muted">${t("study.sessions.item", {
+          duration: formatDuration(session.duration_sec),
+          total: session.total,
+        })}</div>
       </div>
       <div class="session-score">
         <span>✅ ${session.correct}</span>
         <span>❌ ${session.incorrect}</span>
         <span>😌 ${session.easy}</span>
         <span>🔥 ${session.hard}</span>
-        <button class="ghost small delete-session" data-id="${session.id}" data-sound="delete">Excluir</button>
+        <button class="ghost small delete-session" data-id="${session.id}" data-sound="delete">${t(
+          "study.sessions.delete"
+        )}</button>
       </div>
     `;
     sessionsList.appendChild(item);
@@ -776,7 +1070,7 @@ function finishSession(auto = false) {
   const stats = buildReport();
   reportEl.classList.remove("hidden");
   reportEl.scrollIntoView({ behavior: "smooth" });
-  setStatus(auto ? "Tempo finalizado. Sessão concluída." : "Sessão finalizada.");
+  setStatus(auto ? t("study.status.timeFinished") : t("study.status.sessionFinished"));
   stopTimer();
   stopAutoAdvance();
   unlockStudyScroll();
@@ -805,37 +1099,94 @@ difficultyButtons.forEach((btn) => {
 });
 
 toggleAnswerBtn.addEventListener("click", () => {
-  showAnswer = !showAnswer;
-  renderCard();
+  toggleAnswer();
 });
+
+if (studyCard) {
+  studyCard.addEventListener("touchstart", (event) => {
+    if (event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    touchStartTime = Date.now();
+    touchMoved = false;
+  });
+
+  studyCard.addEventListener("touchmove", (event) => {
+    if (event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+    if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+      touchMoved = true;
+    }
+  });
+
+  studyCard.addEventListener("touchend", (event) => {
+    if (!event.changedTouches.length) return;
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+    const elapsed = Date.now() - touchStartTime;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+    if (absX > 50 && absX > absY * 1.2) {
+      handleStudySwipe(deltaX < 0 ? "left" : "right");
+      return;
+    }
+    if (!touchMoved && elapsed < 300) {
+      handleStudyTap();
+    }
+  });
+
+  studyCard.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleStudyTap();
+    }
+  });
+}
 
 prevBtn.addEventListener("click", () => goTo(currentIndex - 1));
 nextBtn.addEventListener("click", () => goTo(currentIndex + 1));
 
 document.addEventListener("keydown", (event) => {
-  if (["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName)) return;
+  if (!studyAlert.classList.contains("hidden")) {
+    if (event.key === "Escape") {
+      closeStudyAlert();
+    }
+    return;
+  }
+  const target = event.target;
+  if (
+    target instanceof HTMLElement &&
+    (target.isContentEditable ||
+      ["INPUT", "TEXTAREA", "SELECT", "BUTTON", "A"].includes(target.tagName))
+  ) {
+    return;
+  }
   if (event.key === "ArrowRight") goTo(currentIndex + 1);
   if (event.key === "ArrowLeft") goTo(currentIndex - 1);
   if (event.key === " ") {
     event.preventDefault();
-    showAnswer = !showAnswer;
-    renderCard();
+    toggleAnswer();
   }
   if (event.key === "1") applyRating("result", "correct");
   if (event.key === "2") applyRating("result", "incorrect");
   if (event.key === "3") applyRating("difficulty", "easy");
   if (event.key === "4") applyRating("difficulty", "hard");
+  if (event.key.toLowerCase() === "r") goToRandomCard();
 });
 
 finishBtn.addEventListener("click", () => finishSession(false));
 
 continueBtn.addEventListener("click", () => {
   if (sessionActive) {
-    openStudyAlert("Finalize a sessão atual antes de começar uma nova.");
+    openStudyAlert(t("study.status.finishCurrent"));
     return;
   }
   reportEl.classList.add("hidden");
-  setStatus("Pronto para nova sessão.");
+  setStatus(t("study.status.readyNext"));
   studySession.classList.add("hidden");
   studySetup.classList.remove("hidden");
   sessionActive = false;
@@ -889,7 +1240,7 @@ async function loadCollections() {
   let hasCards = false;
   const optPlaceholder = document.createElement("option");
   optPlaceholder.value = "";
-  optPlaceholder.textContent = "Selecione uma coleção";
+  optPlaceholder.textContent = t("study.status.selectCollection");
   studyCollectionSelect.appendChild(optPlaceholder);
   collections.forEach((col) => {
     const opt = document.createElement("option");
@@ -933,21 +1284,21 @@ startSessionBtn.addEventListener("click", async () => {
   const collectionId = studyCollectionSelect.value;
   const selected = collectionsData.find((col) => String(col.id) === String(collectionId));
   if (!collectionId || !selected) {
-    setSetupStatus("Selecione uma coleção para iniciar.");
+    setSetupStatus(t("study.status.selectCollection"));
     return;
   }
   if (selected.card_count === 0) {
-    setSetupStatus("Esta coleção ainda não possui cards.");
+    setSetupStatus(t("study.status.collectionEmpty"));
     return;
   }
   if (difficultyReady) {
     const chosen = difficultyFilterSelect.value;
     if (chosen === "easy" && selected.easy_count === 0) {
-      setSetupStatus("Não há cards fáceis nesta coleção.");
+      setSetupStatus(t("study.status.noEasy"));
       return;
     }
     if (chosen === "hard" && selected.hard_count === 0) {
-      setSetupStatus("Não há cards difíceis nesta coleção.");
+      setSetupStatus(t("study.status.noHard"));
       return;
     }
   }
@@ -976,7 +1327,7 @@ startSessionBtn.addEventListener("click", async () => {
     setSessionPillsVisible(true);
     syncStudyAudio({ immediate: true });
   } else {
-    setSetupStatus("Nenhum card encontrado com esse filtro.");
+    setSetupStatus(t("study.status.noFiltered"));
     unlockStudyScroll();
     setSessionPillsVisible(false);
     stopStudyAudio();
@@ -990,10 +1341,10 @@ difficultyFilterSelect.addEventListener("change", () => {
   const selected = collectionsData.find((col) => String(col.id) === String(studyCollectionSelect.value));
   if (!selected) return;
   if (activeDifficulty === "easy" && selected.easy_count === 0) {
-    setSetupStatus("Não há cards fáceis nesta coleção.");
+    setSetupStatus(t("study.status.noEasy"));
   }
   if (activeDifficulty === "hard" && selected.hard_count === 0) {
-    setSetupStatus("Não há cards difíceis nesta coleção.");
+    setSetupStatus(t("study.status.noHard"));
   }
 });
 
@@ -1037,6 +1388,7 @@ window.addEventListener("resize", () => {
   }
 });
 
+setLanguage(detectLanguage());
 loadTheme();
 syncStudyAudio();
 loadCollections();

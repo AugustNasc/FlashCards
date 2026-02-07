@@ -15,21 +15,29 @@
         <button class="ghost theme-btn" data-theme="sand">Sand</button>
         <button class="ghost theme-btn" data-theme="mint">Mint</button>
       </div>
-      <a class="ghost-link" id="study-back" data-sound="nav" href="/">Voltar</a>
+      <div class="help-anchor">
+        <button class="ghost token-pill" id="usage-pill" type="button" aria-expanded="false" aria-controls="usage-panel">
+          Tokens: 0 · ≈ $0.00
+        </button>
+        <div id="usage-panel" class="help-panel hidden usage-panel" role="note" aria-live="polite">
+          <div id="usage-panel-body"></div>
+        </div>
+      </div>
+      <a class="ghost-link" id="study-back" data-sound="nav" href="/" data-i18n="study.back">Voltar</a>
     </div>
     <header class="study-header">
       <div>
-        <p class="eyebrow">Modo estudo</p>
-        <h1>Foco total nos cards.</h1>
-        <p class="subhead">Marque acertos/erros e a dificuldade. No fim você recebe um relatório completo.</p>
+        <p class="eyebrow" data-i18n="study.header.eyebrow">Modo estudo</p>
+        <h1 data-i18n="study.header.title">Foco total nos cards.</h1>
+        <p class="subhead" data-i18n="study.header.subtitle">Marque acertos/erros e a dificuldade. No fim você recebe um relatório completo.</p>
       </div>
       <div class="study-actions">
         <div class="session-pill hidden">
-          <span>Tempo</span>
+          <span data-i18n="study.session.time">Tempo</span>
           <strong id="timer">00:00</strong>
         </div>
         <div class="session-pill hidden">
-          <span>Progresso</span>
+          <span data-i18n="study.session.progress">Progresso</span>
           <strong id="progress">0/0</strong>
         </div>
       </div>
@@ -37,154 +45,155 @@
 
     <main class="study-layout">
       <section class="study-panel" id="study-setup">
-        <h2>Configurar sessão</h2>
-        <p class="muted">
+        <h2 data-i18n="study.setup.title">Configurar sessão</h2>
+        <p class="muted" data-i18n="study.setup.subtitle">
           Escolha a coleção, defina tempo máximo (opcional) e inicie a sessão.
         </p>
         <div id="study-locked" class="notice warning hidden" role="status" aria-live="polite">
-          Você precisa ter uma coleção criada para acessar o modo estudo.
+          <span data-i18n="study.setup.locked">Você precisa ter uma coleção criada para acessar o modo estudo.</span>
         </div>
         <div class="field">
-          <label for="study-collection">Coleção</label>
+          <label for="study-collection" data-i18n="study.setup.collection">Coleção</label>
           <select id="study-collection"></select>
           <p id="study-collection-status" class="status"></p>
         </div>
         <div class="field" id="difficulty-filter-field">
-          <label for="difficulty-filter">Nível de dificuldade</label>
+          <label for="difficulty-filter" data-i18n="study.setup.difficulty">Nível de dificuldade</label>
           <select id="difficulty-filter" disabled>
-            <option value="">Todos</option>
-            <option value="easy">Fácil</option>
-            <option value="hard">Difícil</option>
+            <option value="" data-i18n="study.setup.difficultyAll">Todos</option>
+            <option value="easy" data-i18n="study.setup.difficultyEasy">Fácil</option>
+            <option value="hard" data-i18n="study.setup.difficultyHard">Difícil</option>
           </select>
-          <p class="muted">Disponível após completar todos os cards da coleção.</p>
+          <p class="muted" data-i18n="study.setup.difficultyNote">Disponível após completar todos os cards da coleção.</p>
         </div>
         <div class="field">
-          <label for="session-time">Tempo de sessão (minutos)</label>
+          <label for="session-time" data-i18n="study.setup.timeLabel">Tempo de sessão (minutos)</label>
           <label class="toggle-line" for="session-time-toggle">
             <input id="session-time-toggle" type="checkbox" />
-            Ativar limite de tempo
+            <span data-i18n="study.setup.timeToggle">Ativar limite de tempo</span>
           </label>
           <div class="inline">
             <input id="session-time" type="number" min="1" max="240" value="10" />
-            <span class="muted">minutos por sessão</span>
+            <span class="muted" data-i18n="study.setup.timeUnit">minutos por sessão</span>
           </div>
-          <p class="muted">Ative para encerrar automaticamente quando o tempo acabar.</p>
+          <p class="muted" data-i18n="study.setup.timeNote">Ative para encerrar automaticamente quando o tempo acabar.</p>
         </div>
         <div class="field">
           <label class="toggle-line" for="auto-advance-toggle">
             <input id="auto-advance-toggle" type="checkbox" />
-            Passar cards automaticamente
+            <span data-i18n="study.setup.autoAdvance">Passar cards automaticamente</span>
           </label>
           <div class="inline">
             <input id="auto-advance-interval" type="number" min="2" max="120" value="10" />
-            <span class="muted">segundos por card</span>
+            <span class="muted" data-i18n="study.setup.autoAdvanceUnit">segundos por card</span>
           </div>
-          <p class="muted">Ative para avançar sozinho enquanto a sessão estiver rodando.</p>
+          <p class="muted" data-i18n="study.setup.autoAdvanceNote">Ative para avançar sozinho enquanto a sessão estiver rodando.</p>
         </div>
-        <button id="start-session">Iniciar sessão</button>
+        <button id="start-session" data-i18n="study.setup.start">Iniciar sessão</button>
         <p id="setup-status" class="status"></p>
       </section>
 
       <section class="study-panel hidden" id="study-session">
-        <div class="study-card" id="study-card">
-          <h2 id="card-question">Carregando...</h2>
+        <div class="study-card" id="study-card" role="button" tabindex="0" aria-label="Card de estudo. Toque para mostrar ou ocultar a resposta.">
+          <h2 id="card-question" data-i18n="study.loading">Carregando...</h2>
           <p id="card-answer" class="hidden"></p>
         </div>
 
         <div class="study-controls">
-          <button id="toggle-answer">Mostrar resposta</button>
+          <button id="toggle-answer" aria-controls="card-answer" aria-expanded="false" data-i18n="study.session.showAnswer">Mostrar resposta</button>
           <div class="study-nav">
-            <button class="ghost nav-btn" id="prev" data-sound="nav">◀ Anterior</button>
-            <button class="ghost random-btn" id="reload-cards" data-sound="random">↻ Aleatório</button>
-            <button class="ghost nav-btn" id="next" data-sound="nav">Próximo ▶</button>
+            <button class="ghost nav-btn" id="prev" data-sound="nav" data-i18n="study.session.prev">◀ Anterior</button>
+            <button class="ghost random-btn" id="reload-cards" data-sound="random" data-i18n="study.session.random">↻ Aleatório</button>
+            <button class="ghost nav-btn" id="next" data-sound="nav" data-i18n="study.session.next">Próximo ▶</button>
           </div>
         </div>
 
         <div class="study-rating">
           <div class="rating-group">
-            <span>Resultado</span>
+            <span data-i18n="study.session.result">Resultado</span>
             <div>
-              <button class="ghost" data-result="correct">Acertei</button>
-              <button class="ghost" data-result="incorrect">Errei</button>
+              <button class="ghost" data-result="correct" data-i18n="study.session.correct">Acertei</button>
+              <button class="ghost" data-result="incorrect" data-i18n="study.session.incorrect">Errei</button>
             </div>
           </div>
           <div class="rating-group">
-            <span>Dificuldade</span>
+            <span data-i18n="study.session.difficulty">Dificuldade</span>
             <div>
-              <button class="ghost" data-difficulty="easy">Fácil</button>
-              <button class="ghost" data-difficulty="hard">Difícil</button>
+              <button class="ghost" data-difficulty="easy" data-i18n="study.session.easy">Fácil</button>
+              <button class="ghost" data-difficulty="hard" data-i18n="study.session.hard">Difícil</button>
             </div>
           </div>
         </div>
 
         <div class="study-footer">
-          <button id="finish" class="accent" data-sound="important">Finalizar sessão</button>
-          <button id="continue" class="ghost">Começar nova Sessão</button>
-          <p id="study-status" class="status"></p>
+          <button id="finish" class="accent" data-sound="important" data-i18n="study.session.finish">Finalizar sessão</button>
+          <button id="continue" class="ghost" data-i18n="study.session.restart">Começar nova Sessão</button>
+          <p id="study-status" class="status" aria-live="polite"></p>
         </div>
       </section>
 
       <section class="study-panel report hidden" id="report">
-        <h2>Relatório final</h2>
+        <h2 data-i18n="study.report.title">Relatório final</h2>
         <div class="report-grid">
           <div class="report-card">
-            <span>Acertos</span>
+            <span data-i18n="study.report.correct">Acertos</span>
             <strong id="report-correct">0</strong>
           </div>
           <div class="report-card">
-            <span>Erros</span>
+            <span data-i18n="study.report.incorrect">Erros</span>
             <strong id="report-incorrect">0</strong>
           </div>
           <div class="report-card">
-            <span>Fáceis</span>
+            <span data-i18n="study.report.easy">Fáceis</span>
             <strong id="report-easy">0</strong>
           </div>
           <div class="report-card">
-            <span>Difíceis</span>
+            <span data-i18n="study.report.hard">Difíceis</span>
             <strong id="report-hard">0</strong>
           </div>
         </div>
 
         <div class="report-section">
-          <h3>Cards fáceis</h3>
+          <h3 data-i18n="study.report.easyList">Cards fáceis</h3>
           <ul id="easy-list"></ul>
         </div>
         <div class="report-section">
-          <h3>Cards difíceis</h3>
+          <h3 data-i18n="study.report.hardList">Cards difíceis</h3>
           <ul id="hard-list"></ul>
         </div>
         <div class="report-section">
-          <h3>Erros</h3>
+          <h3 data-i18n="study.report.wrongList">Erros</h3>
           <ul id="wrong-list"></ul>
         </div>
         <div class="report-section">
-          <h3>Recomendação</h3>
+          <h3 data-i18n="study.report.recommendation">Recomendação</h3>
           <p id="recommendation" class="muted"></p>
         </div>
       </section>
 
       <section class="study-panel sessions" id="sessions">
         <div class="panel-header">
-          <h2>Sessões salvas</h2>
-          <button class="ghost" id="refresh-sessions">Atualizar</button>
+          <h2 data-i18n="study.sessions.title">Sessões salvas</h2>
+          <button class="ghost" id="refresh-sessions" data-i18n="study.sessions.refresh">Atualizar</button>
         </div>
         <div id="sessions-list" class="sessions-list"></div>
       </section>
     </main>
 
-    <div id="study-alert" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="study-alert-title">
+    <div id="study-alert" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="study-alert-title" aria-describedby="study-alert-message">
       <div class="modal-card">
         <div class="modal-header">
-          <strong id="study-alert-title">Atenção</strong>
+          <strong id="study-alert-title" data-i18n="study.alert.title">Atenção</strong>
           <button class="ghost icon-btn" id="study-alert-close" aria-label="Fechar aviso">✕</button>
         </div>
         <p id="study-alert-message" class="muted"></p>
         <div class="modal-actions">
-          <button class="accent" id="study-alert-ok">Entendi</button>
+          <button class="accent" id="study-alert-ok" data-i18n="study.alert.ok">Entendi</button>
         </div>
       </div>
     </div>
 
+    <script src="/static/usage.js"></script>
     <script src="/static/study.js"></script>
   </body>
 </html>

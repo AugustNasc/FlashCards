@@ -19,9 +19,18 @@ Construído com **Flask + SQLite**, funciona **sem login**, é simples de rodar 
   - dificuldade (**fácil / difícil**)
   - **relatório final**
   - sessões salvas (tempo + score) com opção de exclusão
+- 📝 **Modo prova (múltipla escolha)**, com IA
+  - 4 alternativas por pergunta
+  - suporte a perguntas com **2 respostas corretas**
+  - **limite de tempo** opcional
+  - **histórico** de provas (acertos/erros)
 - 📤 **Exportação** de cards em **CSV** e **XLSX**
 - 📥 **Importação** de cards via **CSV** ou **JSON**
-  - validação automática de `question` e `answer`
+  - pré-visualização e mapeamento de colunas
+- 🔗 **Compartilhamento de coleções**
+  - link de **template** (JSON)
+  - link de **desafio** para outro usuário testar
+  - senha opcional, limite de acessos e expiração do desafio
 - 🎨 **Temas rápidos**  
   - Light, Dark, Sand, Mint
 - 📊 **Logs de estudo por coleção**
@@ -40,11 +49,16 @@ As mudanças detalhadas estão em `CHANGELOG.md`.
 - 📊 **Logs de estudo por coleção** (sessões completas, cards resolvidos e tempo total)
 - 🧠 **Indicador de foco em estudo**
 - ✅ **Modo estudo com setup** (coleção, tempo máximo e filtro por dificuldade quando disponível)
+- 📝 **Modo prova**: revisão completa + filtro por **acertos/erros** e visualização de provas concluídas
+- 🧾 **Minhas Provas**: tentativas **agrupadas por prova** para evitar poluição visual
 - 🔀 **Aleatório** agora prioriza cards não respondidos
 - 🧭 **Acesso ao estudo bloqueado** sem coleção criada
 - 🗂️ **Migração de cards entre coleções**
 - 🧨 **Exclusão de coleção remove os cards associados**
 - 📦 **Importação com painel dedicado** em “Meus Cards”
+- ❓ **Ajuda de importação melhorada** com botão para **copiar exemplos** e **modelo para IA**
+- 🔗 **Compartilhamento por links** (template e desafio)
+- 🧭 **Onboarding rápido** quando não há coleções/cards
 - 🏷️ **Cards mostram a coleção de origem**
 - 🔊 **Sons separados** (geral, ambiente e study) com controle de volume
 
@@ -87,6 +101,7 @@ python app.py
 Acesse:
 - App principal: `http://localhost:5000`
 - Modo estudo: `http://localhost:5000/study`
+- Modo prova: `http://localhost:5000/exam`
 
 ---
 
@@ -150,6 +165,8 @@ Ou:
 
 ---
 
+> Dica: você pode mapear colunas diferentes na pré-visualização antes de importar.
+
 ## 📤 Exportação
 
 - Escolha CSV ou XLSX
@@ -189,6 +206,18 @@ flashcards.db
 - `DELETE /api/study/sessions/:id`
 - `GET /api/collections/:id/logs`
 - `GET /api/study/summary`
+- `POST /api/share`
+- `POST /api/exam/generate`
+- `GET /api/exam/sessions`
+- `POST /api/exam/sessions`
+- `DELETE /api/exam/sessions/:id`
+- `POST /api/exam/sessions/clear`
+- `GET /api/share/:token`
+- `POST /api/share/:token/access`
+- `POST /api/share/:token/complete`
+- `POST /api/share/:token/disable`
+- `GET /share/:token`
+- `GET /challenge/:token`
 
 ---
 

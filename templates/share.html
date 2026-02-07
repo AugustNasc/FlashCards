@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Template compartilhado</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body class="study-body">
+    <div class="bg-layer"></div>
+    <div class="topbar">
+      <a class="ghost-link" href="/" rel="noopener" data-i18n="share.back">Voltar</a>
+    </div>
+    <main class="study-layout">
+      <section class="study-panel">
+        <h2 data-i18n="share.title">Template compartilhado</h2>
+        <p id="share-meta" class="muted" data-i18n="share.loading">Carregando...</p>
+        <div id="share-lock" class="field hidden">
+          <label for="share-password" data-i18n="share.password.label">Senha do link</label>
+          <div class="inline">
+            <input id="share-password" type="password" placeholder="Digite a senha" data-i18n-placeholder="share.password.placeholder" />
+            <button id="share-unlock" class="ghost" data-i18n="share.unlock">Desbloquear</button>
+          </div>
+          <p id="share-lock-status" class="status"></p>
+        </div>
+        <div class="inline">
+          <button id="share-copy" class="ghost" data-i18n="share.copy">Copiar JSON</button>
+          <button id="share-download" class="ghost" data-i18n="share.download">Baixar JSON</button>
+        </div>
+        <div class="preview-table" id="share-preview"></div>
+        <p id="share-status" class="status"></p>
+      </section>
+    </main>
+    <script src="/static/share.js"></script>
+  </body>
+</html>
