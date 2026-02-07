@@ -6,61 +6,34 @@ Construído com **Flask + SQLite**, funciona **sem login**, é simples de rodar 
 
 ---
 
-## ✨ Principais recursos
+## 🔗 Acessos rápidos
 
-- 🤖 **Geração de flashcards com IA**, por tema  
-  - até **60 cards por geração**
-- ✍️ **Criação manual de cards**
-- 🗂️ **Coleções** para organização  
-  - ex.: `Segurança`, `História`, `JavaScript`
-- 📖 **Modo de estudo dedicado**, com:
-  - mostrar / ocultar resposta
-  - marcar **acertos e erros**
-  - dificuldade (**fácil / difícil**)
-  - **relatório final**
-  - sessões salvas (tempo + score) com opção de exclusão
-- 📝 **Modo prova (múltipla escolha)**, com IA
-  - 4 alternativas por pergunta
-  - suporte a perguntas com **2 respostas corretas**
-  - **limite de tempo** opcional
-  - **histórico** de provas (acertos/erros)
-- 📤 **Exportação** de cards em **CSV** e **XLSX**
-- 📥 **Importação** de cards via **CSV** ou **JSON**
-  - pré-visualização e mapeamento de colunas
-- 🔗 **Compartilhamento de coleções**
-  - link de **template** (JSON)
-  - link de **desafio** para outro usuário testar
-  - senha opcional, limite de acessos e expiração do desafio
-- 🎨 **Temas rápidos**  
-  - Light, Dark, Sand, Mint
-- 📊 **Logs de estudo por coleção**
-  - sessões completas, cards resolvidos e tempo total
-- 🧠 **Indicador de foco em estudo** (últimos 7 dias)
-- ⚙️ **Configurações**
-  - API key OpenAI ou Gemini
-  - sons do app (geral, ambiente e study) + volume
+- App principal: `http://localhost:5000`
+- Modo estudo: `http://localhost:5000/study`
+- Modo prova: `http://localhost:5000/exam`
 
 ---
 
-## 🆕 Updates e melhorias
+## ✨ Recursos (visão geral)
 
-As mudanças detalhadas estão em `CHANGELOG.md`.
+- **Conteúdo**
+  - flashcards: criação manual, importação/exportação e geração com IA
+  - coleções para organizar por tema/assunto
+- **Estudo**
+  - modo estudo com controle de respostas, acertos/erros e dificuldade
+  - relatórios e sessões salvas
+  - logs por coleção e indicador de foco (últimos 7 dias)
+- **Provas**
+  - modo prova (múltipla escolha) com revisão completa e histórico
+  - filtro na revisão por **acertos/erros**
+- **Compartilhamento**
+  - links de template e desafio (com senha opcional, limite de acessos e expiração)
+- **Qualidade de vida**
+  - temas rápidos (Light/Dark/Sand/Mint)
+  - sons do app (geral/ambiente/estudo) + volume
+  - ajuda de importação com exemplos e “modelo para IA” copiável
 
-- 📊 **Logs de estudo por coleção** (sessões completas, cards resolvidos e tempo total)
-- 🧠 **Indicador de foco em estudo**
-- ✅ **Modo estudo com setup** (coleção, tempo máximo e filtro por dificuldade quando disponível)
-- 📝 **Modo prova**: revisão completa + filtro por **acertos/erros** e visualização de provas concluídas
-- 🧾 **Minhas Provas**: tentativas **agrupadas por prova** para evitar poluição visual
-- 🔀 **Aleatório** agora prioriza cards não respondidos
-- 🧭 **Acesso ao estudo bloqueado** sem coleção criada
-- 🗂️ **Migração de cards entre coleções**
-- 🧨 **Exclusão de coleção remove os cards associados**
-- 📦 **Importação com painel dedicado** em “Meus Cards”
-- ❓ **Ajuda de importação melhorada** com botão para **copiar exemplos** e **modelo para IA**
-- 🔗 **Compartilhamento por links** (template e desafio)
-- 🧭 **Onboarding rápido** quando não há coleções/cards
-- 🏷️ **Cards mostram a coleção de origem**
-- 🔊 **Sons separados** (geral, ambiente e study) com controle de volume
+> Mudanças detalhadas em `CHANGELOG.md`.
 
 ---
 
@@ -80,7 +53,7 @@ As mudanças detalhadas estão em `CHANGELOG.md`.
 
 ---
 
-## 🚀 Instalação
+## 🚀 Instalação e execução
 
 ### Linux / macOS
 
@@ -90,18 +63,11 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
----
-
-## ▶️ Como rodar
+### Rodar
 
 ```bash
 python app.py
 ```
-
-Acesse:
-- App principal: `http://localhost:5000`
-- Modo estudo: `http://localhost:5000/study`
-- Modo prova: `http://localhost:5000/exam`
 
 ---
 
@@ -126,18 +92,17 @@ python app.py
 
 ---
 
-## 🗂️ Coleções
+## 🗂️ Coleções (organização)
 
-- Crie coleções para organizar seus cards
-- Filtre geração, importação, exportação e estudo por coleção
-- Ao excluir uma coleção, os cards associados são apagados
-- Você pode migrar cards para outra coleção antes de excluir
+- Crie coleções para organizar seus conteúdos (ex.: `Segurança`, `História`, `JavaScript`)
+- Filtre **geração**, **importação**, **exportação**, **estudo** e **provas** por coleção
+- Ao excluir uma coleção, os cards associados são apagados (com opção de migração antes)
 
 ---
 
-## 📥 Importação de cards
+## 📥 Importação / 📤 Exportação
 
-### CSV
+### Cards — Importação (CSV)
 
 ```csv
 question,answer
@@ -145,7 +110,7 @@ O que é SQL?,Linguagem para bancos relacionais
 O que é HTTP?,Protocolo da web
 ```
 
-### JSON
+### Cards — Importação (JSON)
 
 ```json
 [
@@ -153,7 +118,7 @@ O que é HTTP?,Protocolo da web
 ]
 ```
 
-Ou:
+Ou, no formato:
 
 ```json
 {
@@ -163,16 +128,10 @@ Ou:
 }
 ```
 
----
-
-> Dica: você pode mapear colunas diferentes na pré-visualização antes de importar.
-
-## 📤 Exportação
+### Cards — Exportação
 
 - Escolha CSV ou XLSX
 - Respeita a coleção selecionada
-
----
 
 ---
 
@@ -187,31 +146,40 @@ flashcards.db
 
 ---
 
-## 🔌 Endpoints principais
+## 🔌 API (endpoints principais)
 
+### Cards
 - `GET /api/cards`
 - `POST /api/cards`
 - `DELETE /api/cards/:id`
 - `POST /api/generate`
+- `POST /api/import`
 - `GET /api/export/csv`
 - `GET /api/export/xlsx`
+
+### Coleções e métricas
 - `GET /api/collections`
 - `POST /api/collections`
 - `DELETE /api/collections/:id`
-- `POST /api/import`
+- `GET /api/collections/:id/logs`
+- `GET /api/study/summary`
+
+### Modo estudo
 - `GET /api/study/cards`
 - `GET /api/study/collections`
 - `GET /api/study/sessions`
 - `POST /api/study/sessions`
 - `DELETE /api/study/sessions/:id`
-- `GET /api/collections/:id/logs`
-- `GET /api/study/summary`
-- `POST /api/share`
+
+### Modo prova
 - `POST /api/exam/generate`
 - `GET /api/exam/sessions`
 - `POST /api/exam/sessions`
 - `DELETE /api/exam/sessions/:id`
 - `POST /api/exam/sessions/clear`
+
+### Compartilhamento / Desafio
+- `POST /api/share`
 - `GET /api/share/:token`
 - `POST /api/share/:token/access`
 - `POST /api/share/:token/complete`
