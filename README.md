@@ -1,8 +1,8 @@
 # 🧠 FlashCards IA
 
-**FlashCards IA** é um web app leve, moderno e **mobile-first**, criado para **gerar, estudar e gerenciar flashcards com ajuda de IA**.
+**FlashCards IA** é uma **plataforma de estudos** leve, moderna e **mobile-first** — com **flashcards**, **modo prova (múltipla escolha)**, **desafios compartilhados** e **métricas** para acompanhar evolução.
 
-Construído com **Flask + SQLite**, funciona **sem login**, é simples de rodar localmente e oferece recursos completos de estudo, organização por coleções e integração com **OpenAI ou Gemini**.
+Construído com **Flask + SQLite**, funciona **sem login**, é simples de rodar localmente e oferece recursos completos de estudo, organização por coleções e integração com **OpenAI ou Gemini** (para gerar conteúdo quando você quiser).
 
 ---
 
