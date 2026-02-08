@@ -83,6 +83,21 @@ let reviewFilter = "all";
 let progressInterval = null;
 let clickAudioCtx = null;
 let examTemplatesCache = [];
+let collectionsById = new Map();
+
+function getCollectionNameById(collectionId) {
+  const key = String(collectionId || "").trim();
+  if (!key) return "";
+  return collectionsById.get(key) || "";
+}
+
+function buildCollectionTag(collectionId) {
+  const key = String(collectionId || "").trim();
+  if (!key) return `[${t("exam.setup.collectionTagNone")}]`;
+  const name = getCollectionNameById(key);
+  if (name) return `[${name}]`;
+  return `[#${key}]`;
+}
 
 function shuffleInPlace(list) {
   if (!Array.isArray(list) || list.length < 2) return list;
@@ -114,6 +129,7 @@ const I18N = {
     "exam.setup.collection": "Coleção",
     "exam.setup.collectionPick": "Selecione uma coleção",
     "exam.setup.collectionNote": "A coleção serve para salvar a prova e filtrar o histórico. A geração usa o tema.",
+    "exam.setup.collectionTagNone": "Sem coleção",
     "exam.setup.mode": "Fonte das questões",
     "exam.setup.mode.ai": "Gerar automaticamente",
     "exam.setup.mode.saved": "Usar prova salva",
@@ -210,6 +226,7 @@ const I18N = {
     "exam.setup.collection": "Collection",
     "exam.setup.collectionPick": "Select a collection",
     "exam.setup.collectionNote": "The collection is used to save the exam and filter history. Generation uses the topic.",
+    "exam.setup.collectionTagNone": "No collection",
     "exam.setup.mode": "Question source",
     "exam.setup.mode.ai": "Generate automatically",
     "exam.setup.mode.saved": "Use saved exam",
@@ -450,7 +467,8 @@ function populateExamTemplates(sessions) {
     const createdAt = session.created_at ? new Date(session.created_at).toLocaleString() : "";
     const total = getSessionQuestionsCount(session);
     const title = name || topic || createdAt || `#${String(session.id)}`;
-    const parts = [title];
+    const collectionTag = buildCollectionTag(session.collection_id);
+    const parts = [`${collectionTag} ${title}`.trim()];
     if (topic && title !== topic) parts.push(topic);
     if (total) parts.push(`${total}q`);
     opt.textContent = parts.filter(Boolean).join(" · ");
@@ -1445,6 +1463,12 @@ async function loadCollections() {
     const res = await fetch("/api/collections");
     const list = await res.json();
     const collections = Array.isArray(list) ? list : [];
+    collectionsById = new Map(
+      collections
+        .map((col) => ({ id: String(col.id || "").trim(), name: String(col.name || "").trim() }))
+        .filter((col) => col.id)
+        .map((col) => [col.id, col.name])
+    );
     collections.forEach((col) => {
       const opt = document.createElement("option");
       opt.value = col.id;
@@ -1465,6 +1489,7 @@ async function loadCollections() {
       setCollectionsStatus("");
     }
   } catch (err) {
+    collectionsById = new Map();
     setCollectionsStatus("");
   }
 }
